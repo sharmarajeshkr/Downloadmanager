@@ -71,6 +71,13 @@ class MainWindow(QMainWindow):
         self._setup_signals()
         self._start_clipboard_monitor()
         self._load_existing_tasks()
+        self._center_window()
+
+    def _center_window(self):
+        screen = QApplication.primaryScreen().availableGeometry()
+        size = self.geometry()
+        self.move((screen.width() - size.width()) // 2,
+                  (screen.height() - size.height()) // 2)
 
     # ── UI Setup ─────────────────────────────────────────────────────────
 
@@ -185,24 +192,26 @@ class MainWindow(QMainWindow):
     def _build_sidebar(self) -> QWidget:
         sidebar = QWidget()
         sidebar.setFixedWidth(180)
-        sidebar.setStyleSheet("background: #16213e; border-right: 1px solid #0f3460;")
+        sidebar.setStyleSheet("background: #1e1e2e; border-right: 1px solid #3b4252;")
         layout = QVBoxLayout(sidebar)
-        layout.setContentsMargins(8, 16, 8, 8)
-        layout.setSpacing(4)
+        layout.setContentsMargins(8, 12, 8, 8)
+        layout.setSpacing(2)
 
         logo = QLabel("⬇ WITTGrp")
         logo.setFont(QFont("Segoe UI", 18, QFont.Weight.Bold))
-        logo.setStyleSheet("color: #e94560; padding: 8px 4px 16px 4px;")
+        logo.setStyleSheet("color: #0A84FF; padding: 4px 4px 12px 4px;")
         layout.addWidget(logo)
 
         self.filter_tree = QTreeWidget()
         self.filter_tree.setHeaderHidden(True)
         self.filter_tree.setRootIsDecorated(False)
+        self.filter_tree.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.filter_tree.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.filter_tree.setStyleSheet("""
-            QTreeWidget { background: transparent; border: none; }
-            QTreeWidget::item { padding: 8px 4px; border-radius: 6px; color: #c0c0e0; }
-            QTreeWidget::item:selected { background: rgba(233,69,96,0.25); color: #fff; }
-            QTreeWidget::item:hover { background: rgba(255,255,255,0.05); }
+            QTreeWidget { background: transparent; border: none; outline: none; }
+            QTreeWidget::item { padding: 4px 6px; border-radius: 4px; color: #e2e2e3; }
+            QTreeWidget::item:selected { background: rgba(10, 132, 255, 0.25); color: #fff; }
+            QTreeWidget::item:hover { background: rgba(255, 255, 255, 0.05); }
         """)
         categories = ["All Downloads", "Downloading", "Completed", "Paused",
                       "Videos", "Music", "Documents", "Programs", "Archives", "Other"]
