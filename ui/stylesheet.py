@@ -3,11 +3,15 @@ WITTGrp-style QSS Stylesheet - Dark professional theme
 """
 
 STYLESHEET = """
+* {
+    outline: none;
+}
+
 QMainWindow, QDialog, QWidget {
     background-color: #1e1e2e;
     color: #e2e2e3;
     font-family: 'Segoe UI', Arial, sans-serif;
-    font-size: 14px;
+    font-size: 13px;
 }
 
 /* ── Toolbar ─────────────────────────────────────────────── */
@@ -15,16 +19,16 @@ QToolBar {
     background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
         stop:0 #282a36, stop:1 #1e1e2e);
     border-bottom: 2px solid #0A84FF;
-    spacing: 4px;
-    padding: 6px 10px;
+    spacing: 2px;
+    padding: 2px 6px;
 }
 
 QToolButton {
     background: transparent;
     color: #e2e2e3;
     border: 1px solid transparent;
-    border-radius: 6px;
-    padding: 6px 12px;
+    border-radius: 4px;
+    padding: 4px 8px;
     font-size: 13px;
     font-weight: 600;
 }
@@ -56,8 +60,8 @@ QMenu {
     background-color: #282a36;
     color: #e2e2e3;
     border: 1px solid #3b4252;
-    border-radius: 6px;
-    padding: 4px;
+    border-radius: 4px;
+    padding: 2px;
 }
 
 QMenu::item:selected {
@@ -83,7 +87,7 @@ QTableWidget {
 }
 
 QTableWidget::item {
-    padding: 6px 8px;
+    padding: 3px 6px;
     border: none;
 }
 
@@ -95,8 +99,8 @@ QHeaderView::section {
     background: #282a36;
     color: #0A84FF;
     font-weight: 700;
-    font-size: 13px;
-    padding: 8px;
+    font-size: 12px;
+    padding: 6px 8px;
     border: none;
     border-right: 1px solid #1e1e2e;
     border-bottom: 1px solid #3b4252;
@@ -110,12 +114,10 @@ QHeaderView::section:hover {
 QProgressBar {
     background-color: #282a36;
     border: none;
-    border-radius: 6px;
-    height: 12px;
+    border-radius: 4px;
+    height: 8px;
     text-align: center;
-    color: #ffffff;
-    font-size: 11px;
-    font-weight: 600;
+    color: transparent;
 }
 
 QProgressBar::chunk {
@@ -141,8 +143,8 @@ QPushButton {
     background: #0A84FF;
     color: #ffffff;
     border: none;
-    border-radius: 6px;
-    padding: 8px 18px;
+    border-radius: 4px;
+    padding: 6px 14px;
     font-weight: 600;
     font-size: 13px;
 }
@@ -176,8 +178,8 @@ QLineEdit, QTextEdit, QPlainTextEdit {
     background-color: #282a36;
     color: #e2e2e3;
     border: 1px solid #3b4252;
-    border-radius: 6px;
-    padding: 7px 10px;
+    border-radius: 4px;
+    padding: 4px 8px;
     selection-background-color: #0A84FF;
 }
 
@@ -195,9 +197,9 @@ QComboBox {
     background-color: #282a36;
     color: #e2e2e3;
     border: 1px solid #3b4252;
-    border-radius: 6px;
-    padding: 6px 12px;
-    min-width: 120px;
+    border-radius: 4px;
+    padding: 4px 8px;
+    min-width: 100px;
 }
 
 QComboBox:hover {
@@ -232,8 +234,8 @@ QSpinBox {
     background-color: #282a36;
     color: #e2e2e3;
     border: 1px solid #3b4252;
-    border-radius: 6px;
-    padding: 6px 10px;
+    border-radius: 4px;
+    padding: 4px 8px;
 }
 
 QSpinBox:focus {
