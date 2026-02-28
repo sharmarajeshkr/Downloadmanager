@@ -184,7 +184,7 @@ QLineEdit, QTextEdit, QPlainTextEdit {
     border: 1px solid #3b4252;
     border-radius: 4px;
     padding: 4px 8px;
-    min-height: 22px;
+    min-height: 28px;
     selection-background-color: #0A84FF;
 }
 
@@ -204,7 +204,7 @@ QComboBox {
     border: 1px solid #3b4252;
     border-radius: 4px;
     padding: 4px 8px;
-    min-height: 22px;
+    min-height: 28px;
     min-width: 100px;
 }
 
@@ -242,7 +242,7 @@ QSpinBox {
     border: 1px solid #3b4252;
     border-radius: 4px;
     padding: 4px 8px;
-    min-height: 22px;
+    min-height: 28px;
 }
 
 QSpinBox:focus {
