@@ -12,7 +12,7 @@ from PyQt6.QtWidgets import (
     QApplication, QProgressBar, QSplitter, QTreeWidget, QTreeWidgetItem,
     QFrame, QSizePolicy, QPushButton
 )
-from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QThread, QSize, QUrl
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QThread, QSize, QUrl, QPropertyAnimation, QEasingCurve
 from PyQt6.QtGui import (
     QIcon, QAction, QFont, QColor, QBrush, QPixmap, QPainter,
     QClipboard, QDesktopServices
@@ -147,6 +147,17 @@ class MainWindow(QMainWindow):
         self.move((screen.width() - size.width()) // 2,
                   (screen.height() - size.height()) // 2)
 
+    def _toggle_sidebar(self):
+        is_collapsed = self.sidebar.maximumWidth() == 0
+        target_width = 180 if is_collapsed else 0
+
+        self.sidebar_anim = QPropertyAnimation(self.sidebar, b"maximumWidth")
+        self.sidebar_anim.setDuration(300)
+        self.sidebar_anim.setStartValue(self.sidebar.width() if not is_collapsed else 0)
+        self.sidebar_anim.setEndValue(target_width)
+        self.sidebar_anim.setEasingCurve(QEasingCurve.Type.InOutCubic)
+        self.sidebar_anim.start()
+
     # ── UI Setup ─────────────────────────────────────────────────────────
 
     def _setup_ui(self):
@@ -172,8 +183,8 @@ class MainWindow(QMainWindow):
         splitter.setHandleWidth(1)
 
         # Sidebar
-        sidebar = self._build_sidebar()
-        splitter.addWidget(sidebar)
+        self.sidebar = self._build_sidebar()
+        splitter.addWidget(self.sidebar)
 
         # Download table
         self.table = self._build_table()
@@ -226,6 +237,13 @@ class MainWindow(QMainWindow):
         tb.setIconSize(QSize(20, 20))
         tb.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         self.addToolBar(tb)
+
+        menu_action = QAction(QIcon(os.path.join(SVG_DIR, 'menu.svg')), "Menu", self)
+        menu_action.setToolTip("Toggle Sidebar")
+        menu_action.triggered.connect(self._toggle_sidebar)
+        tb.addAction(menu_action)
+        
+        tb.addSeparator()
 
         add_action = QAction(QIcon(os.path.join(SVG_DIR, 'add.svg')), "Add URL", self)
         add_action.setToolTip("Add new download (Ctrl+N)")
