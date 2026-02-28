@@ -67,8 +67,8 @@ class MainWindow(QMainWindow):
 
         self.setWindowTitle("WITTGrp Download Manager")
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Window)
-        self.setMinimumSize(800, 350)
-        self.resize(1050, 450)
+        self.setMinimumSize(900, 500)
+        self.resize(1100, 650)
 
         self._setup_ui()
         self._setup_tray()

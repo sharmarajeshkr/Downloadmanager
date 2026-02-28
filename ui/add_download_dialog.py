@@ -44,8 +44,8 @@ class AddDownloadDialog(QDialog):
 
         self.setWindowTitle("Add New Download")
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
-        self.setMinimumSize(600, 450)
-        self.resize(750, 450)
+        self.setMinimumSize(700, 500)
+        self.resize(800, 550)
         self.setModal(True)
 
         self._typing_timer = QTimer(self)
