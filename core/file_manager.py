@@ -174,5 +174,31 @@ def probe_url(url: str, headers: dict = None) -> Tuple[str, int, bool, str]:
         import logging
         logging.getLogger(__name__).error(f"yt-dlp extraction failed: {e}")
 
+    # Custom XVideos fallback for ISP blocks
+    if 'xvideos' in domain:
+        try:
+            import re
+            import urllib.request
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/121.0.0.0 Safari/537.36'})
+            html = urllib.request.urlopen(req, timeout=10).read().decode('utf-8', errors='ignore')
+            # Try to grab the highest quality mp4 URL
+            matches = re.findall(r"setVideoUrlHigh\('([^']+\.mp4[^']*)'\)", html)
+            if not matches:
+                matches = re.findall(r"(https?://[^\'\"]+\.mp4[^\'\"]*)", html)
+            
+            if matches:
+                # Sort by resolution (if present in URL) or just grab the last one which is usually best
+                best_vid = sorted(set(matches), key=lambda x: '720p' in x or '1080p' in x or 'high' in x, reverse=True)[0]
+                
+                # Directly measure content length if possible
+                try:
+                    head_resp = requests.head(best_vid, timeout=10, verify=False, allow_redirects=True)
+                    real_size = int(head_resp.headers.get('Content-Length', 0))
+                except:
+                    real_size = 0
+                return best_vid, real_size, True, 'filename="xvideos_download.mp4"'
+        except Exception as e:
+            logging.getLogger(__name__).error(f"XVideos native fallback failed: {e}")
+
     # Ultimate fallback
     return url, 0, False, ''
