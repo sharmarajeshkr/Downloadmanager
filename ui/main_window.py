@@ -63,8 +63,8 @@ class MainWindow(QMainWindow):
         self._clipboard_last = ''
 
         self.setWindowTitle("WITTGrp Download Manager")
-        self.setMinimumSize(1100, 650)
-        self.resize(1280, 750)
+        self.setMinimumSize(800, 350)
+        self.resize(1050, 450)
 
         self._setup_ui()
         self._setup_tray()
