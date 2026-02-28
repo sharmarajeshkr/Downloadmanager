@@ -115,8 +115,8 @@ class AddDownloadDialog(QDialog):
         # ── File Info ────────────────────────────────────────────
         file_group = QGroupBox("File Info")
         file_fl = QFormLayout(file_group)
-        file_fl.setSpacing(8)
-        file_fl.setContentsMargins(10, 14, 10, 10)
+        file_fl.setSpacing(12)
+        file_fl.setContentsMargins(10, 14, 10, 14)
 
         self.filename_edit = QLineEdit()
         self.filename_edit.setPlaceholderText("filename.ext")
