@@ -183,8 +183,7 @@ QLineEdit, QTextEdit, QPlainTextEdit {
     color: #e2e2e3;
     border: 1px solid #3b4252;
     border-radius: 4px;
-    padding: 4px 8px;
-    min-height: 28px;
+    min-height: 32px;
     selection-background-color: #0A84FF;
 }
 
@@ -203,8 +202,7 @@ QComboBox {
     color: #e2e2e3;
     border: 1px solid #3b4252;
     border-radius: 4px;
-    padding: 4px 8px;
-    min-height: 28px;
+    min-height: 32px;
     min-width: 100px;
 }
 
@@ -241,8 +239,7 @@ QSpinBox {
     color: #e2e2e3;
     border: 1px solid #3b4252;
     border-radius: 4px;
-    padding: 4px 8px;
-    min-height: 28px;
+    padding: 6px 8px;
 }
 
 QSpinBox:focus {
@@ -253,18 +250,22 @@ QSpinBox:focus {
 QGroupBox {
     border: 1px solid #3b4252;
     border-radius: 8px;
-    margin-top: 14px;
-    padding: 12px;
+    margin-top: 18px;
     color: #0A84FF;
     font-weight: 700;
+    font-size: 13px;
 }
 
 QGroupBox::title {
     subcontrol-origin: margin;
     subcontrol-position: top left;
+    top: -1px;
     left: 12px;
-    padding: 0 6px;
+    padding: 2px 6px;
     background-color: #1e1e2e;
+    color: #0A84FF;
+    font-weight: 700;
+    font-size: 13px;
 }
 
 /* ── CheckBox ─────────────────────────────────────────────── */
