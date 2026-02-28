@@ -97,20 +97,30 @@
         right: 8px;
         transform: translateY(-50%);
         z-index: 2147483647;
-        background: #e94560;
+        background: rgba(10, 132, 255, 0.85);
+        backdrop-filter: blur(4px);
         color: white;
-        border: none;
-        border-radius: 6px;
-        padding: 6px 14px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        padding: 8px 16px;
         font-size: 13px;
-        font-weight: 700;
+        font-weight: 600;
         cursor: pointer;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
         font-family: 'Segoe UI', Arial, sans-serif;
-        transition: background 0.2s;
+        transition: all 0.2s ease-in-out;
+        opacity: 0.8;
       `;
-            btn.onmouseover = () => btn.style.background = '#c73652';
-            btn.onmouseout = () => btn.style.background = '#e94560';
+            btn.onmouseover = () => {
+                btn.style.background = 'rgba(71, 161, 255, 0.95)';
+                btn.style.opacity = '1';
+                btn.style.transform = 'translateY(-50%) scale(1.05)';
+            };
+            btn.onmouseout = () => {
+                btn.style.background = 'rgba(10, 132, 255, 0.85)';
+                btn.style.opacity = '0.8';
+                btn.style.transform = 'translateY(-50%) scale(1)';
+            };
 
             // Prevent video players from pausing by catching all mouse/pointer events
             const stopAll = (e) => {
@@ -143,10 +153,10 @@
 
                     chrome.runtime.sendMessage(payload);
                     btn.textContent = '✓ Sent to WITTGrp';
-                    btn.style.background = '#22c55e';
+                    btn.style.background = 'rgba(34, 197, 94, 0.9)'; // Green success
                     setTimeout(() => {
                         btn.textContent = '⬇ Download';
-                        btn.style.background = '#e94560';
+                        btn.style.background = 'rgba(10, 132, 255, 0.85)';
                     }, 3000);
                 }
             };

@@ -43,16 +43,16 @@ def create_splash_screen(app: QApplication) -> QSplashScreen:
 
     # Background
     grad = QLinearGradient(0, 0, 480, 280)
-    grad.setColorAt(0, QColor("#0f3460"))
-    grad.setColorAt(0.5, QColor("#16213e"))
-    grad.setColorAt(1, QColor("#1a1a2e"))
+    grad.setColorAt(0, QColor("#3b4252"))
+    grad.setColorAt(0.5, QColor("#282a36"))
+    grad.setColorAt(1, QColor("#1e1e2e"))
     painter.fillRect(0, 0, 480, 280, grad)
 
     # Accent bar
-    painter.fillRect(0, 0, 480, 5, QColor("#e94560"))
+    painter.fillRect(0, 0, 480, 5, QColor("#0A84FF"))
 
     # Icon
-    painter.setPen(QColor("#e94560"))
+    painter.setPen(QColor("#0A84FF"))
     painter.setFont(QFont("Segoe UI", 64, QFont.Weight.Bold))
     painter.drawText(20, 110, "⬇")
 
@@ -61,7 +61,7 @@ def create_splash_screen(app: QApplication) -> QSplashScreen:
     painter.setFont(QFont("Segoe UI", 32, QFont.Weight.Bold))
     painter.drawText(110, 95, "WITTGrp")
 
-    painter.setPen(QColor("#e94560"))
+    painter.setPen(QColor("#0A84FF"))
     painter.setFont(QFont("Segoe UI", 13))
     painter.drawText(110, 120, "WITTGrp Download Manage")
 
@@ -70,7 +70,7 @@ def create_splash_screen(app: QApplication) -> QSplashScreen:
     painter.drawText(110, 145, "Multi-threaded • Resumable • Fast")
 
     # Bottom bar
-    painter.fillRect(0, 250, 480, 30, QColor("#0f3460"))
+    painter.fillRect(0, 250, 480, 30, QColor("#282a36"))
     painter.setPen(QColor("#6080a0"))
     painter.setFont(QFont("Segoe UI", 10))
     painter.drawText(20, 270, "Loading… please wait")
