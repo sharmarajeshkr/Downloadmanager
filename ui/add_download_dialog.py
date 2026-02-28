@@ -43,8 +43,8 @@ class AddDownloadDialog(QDialog):
         self._probe_thread = None
 
         self.setWindowTitle("Add New Download")
-        self.setMinimumSize(580, 500)
-        self.resize(640, 560)
+        self.setMinimumSize(580, 520)
+        self.resize(640, 600)
         self.setModal(True)
 
         self._typing_timer = QTimer(self)
@@ -115,7 +115,7 @@ class AddDownloadDialog(QDialog):
         # ── File Info ────────────────────────────────────────────
         file_group = QGroupBox("File Info")
         file_fl = QFormLayout(file_group)
-        file_fl.setSpacing(12)
+        file_fl.setSpacing(16)
         file_fl.setContentsMargins(10, 14, 10, 14)
 
         self.filename_edit = QLineEdit()
