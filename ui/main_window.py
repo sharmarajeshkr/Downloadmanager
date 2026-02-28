@@ -659,7 +659,7 @@ class MainWindow(QMainWindow):
         if self.db.get_setting('minimize_to_tray', 'true') == 'true':
             event.ignore()
             self.hide()
-            self.tray_icon.showMessage("WITTGrp", "Running in background", 2000)
+            self.tray_icon.showMessage("WITTGrp", "Running in background", QSystemTrayIcon.MessageIcon.Information, 2000)
         else:
             self._quit_app()
 
