@@ -9,7 +9,10 @@ from PyQt6.QtWidgets import (
     QHeaderView, QAbstractItemView, QSlider
 )
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QFont
+from PyQt6.QtGui import QFont, QIcon
+from ui.titlebar import CustomTitleBar
+
+SVG_DIR = os.path.join(os.path.dirname(__file__), "assets", "svg")
 
 
 class SettingsDialog(QDialog):
@@ -19,6 +22,7 @@ class SettingsDialog(QDialog):
         super().__init__(parent)
         self.db = db
         self.setWindowTitle("WITTGrp Settings & Preferences")
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
         self.setMinimumSize(700, 550)
         self.setModal(True)
         self._settings = db.get_all_settings() if db else {}
@@ -27,22 +31,20 @@ class SettingsDialog(QDialog):
         self._load_values()
 
     def _build_ui(self):
-        layout = QVBoxLayout(self)
-        layout.setSpacing(0)
-        layout.setContentsMargins(0, 0, 0, 0)
+        main_layout = QVBoxLayout(self)
+        main_layout.setSpacing(0)
+        main_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Header
-        header = QWidget()
-        header.setStyleSheet("background: #0f3460; padding: 16px;")
-        hh = QVBoxLayout(header)
-        title = QLabel("⚙  Settings & Preferences")
-        title.setFont(QFont("Segoe UI", 16, QFont.Weight.Bold))
-        title.setStyleSheet("color: #e94560; background: transparent;")
-        subtitle = QLabel("Configure download preferences, paths, and integrations")
-        subtitle.setStyleSheet("color: #8090b0; background: transparent; font-size: 12px;")
-        hh.addWidget(title)
-        hh.addWidget(subtitle)
-        layout.addWidget(header)
+        # Custom Frameless Title Bar
+        self.title_bar = CustomTitleBar(self, title="✨ Settings & Preferences")
+        main_layout.addWidget(self.title_bar)
+
+        # Inner content grouping
+        content_widget = QWidget()
+        layout = QVBoxLayout(content_widget)
+        layout.setSpacing(8)
+        layout.setContentsMargins(12, 12, 12, 12)
+        main_layout.addWidget(content_widget)
 
         self.tabs = QTabWidget()
         layout.addWidget(self.tabs)
@@ -60,6 +62,7 @@ class SettingsDialog(QDialog):
         self.cancel_btn.setObjectName("btn_cancel")
         self.cancel_btn.setMinimumWidth(100)
         self.save_btn = QPushButton("Save Settings")
+        self.save_btn.setIcon(QIcon(os.path.join(SVG_DIR, 'settings.svg')))
         self.save_btn.setMinimumWidth(140)
         btn_row.addWidget(self.cancel_btn)
         btn_row.addWidget(self.save_btn)
