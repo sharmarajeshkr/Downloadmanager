@@ -10,7 +10,7 @@ from PyQt6.QtWidgets import (
     QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView,
     QStatusBar, QLabel, QMenu, QSystemTrayIcon, QMessageBox,
     QApplication, QProgressBar, QSplitter, QTreeWidget, QTreeWidgetItem,
-    QFrame, QSizePolicy, QPushButton
+    QFrame, QSizePolicy, QPushButton, QGraphicsDropShadowEffect
 )
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QThread, QSize, QUrl, QPropertyAnimation, QEasingCurve
 from PyQt6.QtGui import (
@@ -169,6 +169,11 @@ class MainWindow(QMainWindow):
 
         # Title bar
         self.title_bar = CustomTitleBar(self)
+        title_shadow = QGraphicsDropShadowEffect(self)
+        title_shadow.setBlurRadius(15)
+        title_shadow.setColor(QColor(0, 0, 0, 160))
+        title_shadow.setOffset(0, 2)
+        self.title_bar.setGraphicsEffect(title_shadow)
         main_layout.addWidget(self.title_bar)
 
         self._setup_menubar()
@@ -321,6 +326,12 @@ class MainWindow(QMainWindow):
         ver = QLabel("v1.0.0 | Port 9614")
         ver.setStyleSheet("color: #404060; font-size: 10px; padding: 4px;")
         layout.addWidget(ver)
+
+        sidebar_shadow = QGraphicsDropShadowEffect(sidebar)
+        sidebar_shadow.setBlurRadius(20)
+        sidebar_shadow.setColor(QColor(0, 0, 0, 150))
+        sidebar_shadow.setOffset(3, 0)
+        sidebar.setGraphicsEffect(sidebar_shadow)
 
         return sidebar
 
