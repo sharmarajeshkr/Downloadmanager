@@ -36,50 +36,69 @@ from ui.stylesheet import STYLESHEET
 
 
 def create_splash_screen(app: QApplication) -> QSplashScreen:
-    """Create a stylish splash screen."""
-    pix = QPixmap(480, 280)
+    """Create a modern, clean splash screen with no overlapping elements."""
+    W, H = 520, 290
+    pix = QPixmap(W, H)
     pix.fill(Qt.GlobalColor.transparent)
     painter = QPainter(pix)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
-    # Background
-    grad = QLinearGradient(0, 0, 480, 280)
-    grad.setColorAt(0, QColor("#3b4252"))
-    grad.setColorAt(0.5, QColor("#282a36"))
-    grad.setColorAt(1, QColor("#1e1e2e"))
-    painter.fillRect(0, 0, 480, 280, grad)
+    # ── Background ──────────────────────────────────────────────
+    from PyQt6.QtGui import QBrush
+    grad = QLinearGradient(0, 0, W, H)
+    grad.setColorAt(0.0, QColor("#1e2030"))
+    grad.setColorAt(1.0, QColor("#13141f"))
+    painter.fillRect(0, 0, W, H, grad)
 
-    # Accent bar
-    painter.fillRect(0, 0, 480, 5, QColor("#0A84FF"))
+    # Top accent bar
+    painter.fillRect(0, 0, W, 4, QColor("#0A84FF"))
 
-    # Icon
-    painter.setPen(QColor("#0A84FF"))
-    painter.setFont(QFont("Segoe UI", 64, QFont.Weight.Bold))
-    painter.drawText(20, 110, "⬇")
+    # ── Icon box (left column) ──────────────────────────────────
+    icon_x, icon_y, icon_size = 28, 60, 76
+    painter.setBrush(QBrush(QColor("#0A84FF")))
+    painter.setPen(Qt.PenStyle.NoPen)
+    painter.drawRoundedRect(icon_x, icon_y, icon_size, icon_size, 14, 14)
 
-    # Title
     painter.setPen(QColor("#ffffff"))
-    painter.setFont(QFont("Segoe UI", 32, QFont.Weight.Bold))
-    painter.drawText(110, 95, "WITTGrp")
+    f_icon = QFont("Segoe UI", 38, QFont.Weight.Bold)
+    painter.setFont(f_icon)
+    # Center the arrow inside the box
+    painter.drawText(
+        icon_x, icon_y + 6, icon_size, icon_size,
+        Qt.AlignmentFlag.AlignCenter, "⬇"
+    )
 
-    painter.setPen(QColor("#0A84FF"))
-    painter.setFont(QFont("Segoe UI", 13))
-    painter.drawText(110, 120, "WITTGrp Download Manage")
+    # ── Text (right column) ─────────────────────────────────────
+    tx = icon_x + icon_size + 20  # text start x
+    ty = icon_y                   # text start y (aligned with top of icon)
 
-    painter.setPen(QColor("#6080a0"))
-    painter.setFont(QFont("Segoe UI", 11))
-    painter.drawText(110, 145, "Multi-threaded • Resumable • Fast")
+    # App name
+    painter.setPen(QColor("#ffffff"))
+    painter.setFont(QFont("Segoe UI", 30, QFont.Weight.Bold))
+    painter.drawText(tx, ty + 36, "WITTGrp")
 
-    # Bottom bar
-    painter.fillRect(0, 250, 480, 30, QColor("#282a36"))
-    painter.setPen(QColor("#6080a0"))
+    # Subtitle
+    painter.setPen(QColor("#47A1FF"))
+    painter.setFont(QFont("Segoe UI", 12))
+    painter.drawText(tx, ty + 60, "Download Manager")
+
+    # Tagline
+    painter.setPen(QColor("#5a6a80"))
     painter.setFont(QFont("Segoe UI", 10))
-    painter.drawText(20, 270, "Loading… please wait")
-    painter.drawText(380, 270, "v1.0.0")
+    painter.drawText(tx, ty + 82, "Multi-threaded  •  Resumable  •  Fast")
+
+    # ── Bottom status bar ───────────────────────────────────────
+    painter.fillRect(0, H - 36, W, 36, QColor("#0d0e18"))
+    painter.setPen(QColor("#47A1FF"))
+    painter.setFont(QFont("Segoe UI", 10, QFont.Weight.Bold))
+    painter.drawText(20, H - 10, "Loading interface…")
+    painter.setPen(QColor("#3b4252"))
+    painter.setFont(QFont("Segoe UI", 10))
+    painter.drawText(W - 60, H - 10, "v1.0.0")
 
     painter.end()
 
     splash = QSplashScreen(pix, Qt.WindowType.WindowStaysOnTopHint)
-    splash.setFont(QFont("Segoe UI", 11))
     return splash
 
 
