@@ -8,7 +8,7 @@ from PyQt6.QtWidgets import (
     QPushButton, QFileDialog, QSpinBox, QComboBox, QCheckBox,
     QGroupBox, QFormLayout, QProgressBar
 )
-from PyQt6.QtCore import Qt, pyqtSignal, QThread
+from PyQt6.QtCore import Qt, pyqtSignal, QThread, QTimer
 from PyQt6.QtGui import QFont, QIcon
 from core.file_manager import filename_from_url, probe_url, get_category, format_size
 
@@ -43,6 +43,10 @@ class AddDownloadDialog(QDialog):
         self.setMinimumWidth(620)
         self.setModal(True)
 
+        self._typing_timer = QTimer(self)
+        self._typing_timer.setSingleShot(True)
+        self._typing_timer.timeout.connect(self._probe_url)
+
         self._build_ui()
         self._connect_signals()
 
@@ -52,8 +56,9 @@ class AddDownloadDialog(QDialog):
             self.filename_edit.setText(filename)
         if referer:
             self.referer_edit.setText(referer)
-        if url:
-            self._probe_url()
+        
+        # The URL probe will automatically launch 800ms after the URL box text is set 
+        # via the _typing_timer, preventing 0ms race-requests that trip anti-bot filters.
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
@@ -175,6 +180,11 @@ class AddDownloadDialog(QDialog):
             if name:
                 self.filename_edit.setText(name)
                 self._on_filename_changed(name)
+        
+        if text.strip().startswith('http'):
+            self._typing_timer.start(800)  # Auto-detect 800ms after typing stops
+        else:
+            self._typing_timer.stop()
 
     def _on_filename_changed(self, name):
         cat = get_category(name, self.categories)
@@ -192,8 +202,10 @@ class AddDownloadDialog(QDialog):
 
     def _probe_url(self):
         url = self.url_edit.text().strip()
-        if not url:
+        if not url or not url.startswith('http'):
             return
+        if not self.probe_btn.isEnabled():
+            return  # Already probing
         self.probe_status.setText("⌛ Detecting file info…")
         self.probe_btn.setEnabled(False)
         referer = self.referer_edit.text().strip()
