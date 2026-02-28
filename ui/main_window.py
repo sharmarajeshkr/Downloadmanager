@@ -132,7 +132,7 @@ class MainWindow(QMainWindow):
         # Download table
         self.table = self._build_table()
         splitter.addWidget(self.table)
-        splitter.setSizes([180, 900])
+        splitter.setSizes([165, 935])
 
         main_layout.addWidget(splitter, 1)
 
@@ -228,21 +228,22 @@ class MainWindow(QMainWindow):
 
     def _build_sidebar(self) -> QWidget:
         sidebar = QWidget()
-        sidebar.setFixedWidth(180)
+        sidebar.setMinimumWidth(160)
+        sidebar.setMaximumWidth(200)
         sidebar.setStyleSheet("background: #1e1e2e; border-right: 1px solid #3b4252;")
         layout = QVBoxLayout(sidebar)
         layout.setContentsMargins(8, 12, 8, 8)
         layout.setSpacing(2)
 
-        logo = QLabel("⬇ WITTGrp")
-        logo.setFont(QFont("Segoe UI", 18, QFont.Weight.Bold))
-        logo.setStyleSheet("color: #0A84FF; padding: 4px 4px 12px 4px;")
+        logo = QLabel("⬇  WITTGrp")
+        logo.setFont(QFont("Segoe UI", 13, QFont.Weight.Bold))
+        logo.setStyleSheet("color: #0A84FF; padding: 4px 4px 10px 4px;")
         layout.addWidget(logo)
 
         self.filter_tree = QTreeWidget()
         self.filter_tree.setHeaderHidden(True)
         self.filter_tree.setRootIsDecorated(False)
-        self.filter_tree.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.filter_tree.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.filter_tree.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.filter_tree.setStyleSheet("""
             QTreeWidget { background: transparent; border: none; outline: none; }
@@ -289,7 +290,7 @@ class MainWindow(QMainWindow):
         table.doubleClicked.connect(self._on_double_click)
         table.verticalHeader().setVisible(False)
         table.setShowGrid(False)
-        table.setRowHeight(0, 44)
+        table.verticalHeader().setDefaultSectionSize(38)
 
         hh = table.horizontalHeader()
         hh.setSectionResizeMode(COL_NAME, QHeaderView.ResizeMode.Stretch)

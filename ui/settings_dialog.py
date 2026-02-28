@@ -22,8 +22,8 @@ class SettingsDialog(QDialog):
         super().__init__(parent)
         self.db = db
         self.setWindowTitle("WITTGrp Settings & Preferences")
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
-        self.setMinimumSize(700, 550)
+        self.setMinimumSize(680, 540)
+        self.resize(720, 580)
         self.setModal(True)
         self._settings = db.get_all_settings() if db else {}
         self._categories = db.get_categories() if db else []
@@ -31,23 +31,32 @@ class SettingsDialog(QDialog):
         self._load_values()
 
     def _build_ui(self):
-        main_layout = QVBoxLayout(self)
-        main_layout.setSpacing(0)
-        main_layout.setContentsMargins(0, 0, 0, 0)
+        from PyQt6.QtWidgets import QHBoxLayout
+        layout = QVBoxLayout(self)
+        layout.setSpacing(10)
+        layout.setContentsMargins(16, 14, 16, 14)
 
-        # Custom Frameless Title Bar
-        self.title_bar = CustomTitleBar(self, title="✨ Settings & Preferences")
-        main_layout.addWidget(self.title_bar)
-
-        # Inner content grouping
-        content_widget = QWidget()
-        layout = QVBoxLayout(content_widget)
-        layout.setSpacing(8)
-        layout.setContentsMargins(12, 12, 12, 12)
-        main_layout.addWidget(content_widget)
+        # Header
+        hdr = QHBoxLayout()
+        hdr.setSpacing(8)
+        icon_lbl = QLabel("⚙")
+        icon_lbl.setFixedSize(28, 28)
+        icon_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        icon_lbl.setStyleSheet(
+            "background:#0A84FF; color:#fff; border-radius:6px;"
+            "font-size:14px; font-weight:700;"
+        )
+        from PyQt6.QtGui import QFont as _QFont
+        title_lbl = QLabel("Settings & Preferences")
+        title_lbl.setFont(_QFont("Segoe UI", 15, _QFont.Weight.Bold))
+        title_lbl.setStyleSheet("color:#0A84FF;")
+        hdr.addWidget(icon_lbl)
+        hdr.addWidget(title_lbl)
+        hdr.addStretch()
+        layout.addLayout(hdr)
 
         self.tabs = QTabWidget()
-        layout.addWidget(self.tabs)
+        layout.addWidget(self.tabs, 1)
 
         self.tabs.addTab(self._general_tab(), "General")
         self.tabs.addTab(self._connection_tab(), "Connection")
@@ -56,13 +65,11 @@ class SettingsDialog(QDialog):
 
         # Buttons
         btn_row = QHBoxLayout()
-        btn_row.setContentsMargins(16, 12, 16, 16)
         btn_row.addStretch()
         self.cancel_btn = QPushButton("Cancel")
         self.cancel_btn.setObjectName("btn_cancel")
         self.cancel_btn.setMinimumWidth(100)
         self.save_btn = QPushButton("Save Settings")
-        self.save_btn.setIcon(QIcon(os.path.join(SVG_DIR, 'settings.svg')))
         self.save_btn.setMinimumWidth(140)
         btn_row.addWidget(self.cancel_btn)
         btn_row.addWidget(self.save_btn)
