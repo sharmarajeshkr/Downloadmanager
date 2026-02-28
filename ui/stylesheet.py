@@ -14,6 +14,10 @@ QMainWindow, QDialog, QWidget {
     font-size: 13px;
 }
 
+QDialog {
+    border: 1px solid #3b4252;
+}
+
 /* ── Toolbar ─────────────────────────────────────────────── */
 QToolBar {
     background: qlineargradient(x1:0, y1:0, x2:0, y2:1,

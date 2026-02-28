@@ -11,6 +11,9 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, pyqtSignal, QThread, QTimer
 from PyQt6.QtGui import QFont, QIcon
 from core.file_manager import filename_from_url, probe_url, get_category, format_size
+from ui.titlebar import CustomTitleBar
+
+SVG_DIR = os.path.join(os.path.dirname(__file__), "assets", "svg")
 
 
 class ProbeThread(QThread):
@@ -40,6 +43,7 @@ class AddDownloadDialog(QDialog):
         self._probe_thread = None
 
         self.setWindowTitle("Add New Download")
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
         self.setMinimumWidth(620)
         self.setModal(True)
 
@@ -61,15 +65,20 @@ class AddDownloadDialog(QDialog):
         # via the _typing_timer, preventing 0ms race-requests that trip anti-bot filters.
 
     def _build_ui(self):
-        layout = QVBoxLayout(self)
-        layout.setSpacing(12)
-        layout.setContentsMargins(20, 20, 20, 20)
+        main_layout = QVBoxLayout(self)
+        main_layout.setSpacing(0)
+        main_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Header
-        header = QLabel("⬇  Add New Download")
-        header.setObjectName("title_label")
-        header.setFont(QFont("Segoe UI", 16, QFont.Weight.Bold))
-        layout.addWidget(header)
+        # Custom Frameless Title Bar
+        self.title_bar = CustomTitleBar(self, title="✨ Add New Download")
+        main_layout.addWidget(self.title_bar)
+        
+        # Inner content grouping
+        content_widget = QWidget()
+        layout = QVBoxLayout(content_widget)
+        layout.setSpacing(8)
+        layout.setContentsMargins(12, 12, 12, 12)
+        main_layout.addWidget(content_widget)
 
         # URL Group
         url_group = QGroupBox("Download URL")
@@ -158,7 +167,8 @@ class AddDownloadDialog(QDialog):
         self.cancel_btn = QPushButton("Cancel")
         self.cancel_btn.setObjectName("btn_cancel")
         self.cancel_btn.setMinimumWidth(100)
-        self.ok_btn = QPushButton("⬇  Start Download")
+        self.ok_btn = QPushButton("Start Download")
+        self.ok_btn.setIcon(QIcon(os.path.join(SVG_DIR, 'add.svg')))
         self.ok_btn.setMinimumWidth(150)
         btn_row.addWidget(self.cancel_btn)
         btn_row.addWidget(self.ok_btn)
