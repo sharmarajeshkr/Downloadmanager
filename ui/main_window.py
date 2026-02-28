@@ -23,6 +23,8 @@ from core.file_manager import format_size, format_speed, format_eta
 from ui.add_download_dialog import AddDownloadDialog
 from ui.settings_dialog import SettingsDialog
 
+SVG_DIR = os.path.join(os.path.dirname(__file__), "assets", "svg")
+
 
 # Column indices
 COL_NAME     = 0
@@ -68,9 +70,12 @@ class CustomTitleBar(QWidget):
         layout.addWidget(title_label)
         layout.addStretch()
 
-        self.btn_min = QPushButton("🗕")
-        self.btn_max = QPushButton("🗖")
-        self.btn_close = QPushButton("🗙")
+        self.btn_min = QPushButton()
+        self.btn_min.setIcon(QIcon(os.path.join(SVG_DIR, 'min.svg')))
+        self.btn_max = QPushButton()
+        self.btn_max.setIcon(QIcon(os.path.join(SVG_DIR, 'max.svg')))
+        self.btn_close = QPushButton()
+        self.btn_close.setIcon(QIcon(os.path.join(SVG_DIR, 'close.svg')))
 
         for btn in (self.btn_min, self.btn_max, self.btn_close):
             btn.setFixedSize(45, 38)
@@ -222,30 +227,30 @@ class MainWindow(QMainWindow):
         tb.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         self.addToolBar(tb)
 
-        add_action = QAction("➕  Add URL", self)
+        add_action = QAction(QIcon(os.path.join(SVG_DIR, 'add.svg')), "Add URL", self)
         add_action.setToolTip("Add new download (Ctrl+N)")
         add_action.triggered.connect(self._show_add_dialog)
         tb.addAction(add_action)
 
         tb.addSeparator()
 
-        start_action = QAction("▶  Start All", self)
+        start_action = QAction(QIcon(os.path.join(SVG_DIR, 'play.svg')), "Start All", self)
         start_action.triggered.connect(self.queue_manager.start_all)
         tb.addAction(start_action)
 
-        stop_action = QAction("⏹  Stop All", self)
+        stop_action = QAction(QIcon(os.path.join(SVG_DIR, 'stop.svg')), "Stop All", self)
         stop_action.triggered.connect(self.queue_manager.stop_all)
         tb.addAction(stop_action)
 
         tb.addSeparator()
 
-        settings_action = QAction("⚙  Settings", self)
+        settings_action = QAction(QIcon(os.path.join(SVG_DIR, 'settings.svg')), "Settings", self)
         settings_action.triggered.connect(self._show_settings)
         tb.addAction(settings_action)
 
         tb.addSeparator()
 
-        open_folder_action = QAction("📂  Open Folder", self)
+        open_folder_action = QAction(QIcon(os.path.join(SVG_DIR, 'folder.svg')), "Open Folder", self)
         open_folder_action.triggered.connect(self._open_downloads_folder)
         tb.addAction(open_folder_action)
 
