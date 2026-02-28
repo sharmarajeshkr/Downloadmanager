@@ -1,0 +1,10 @@
+downloads/
+*.db
+*.db-shm
+*.db-wal
+*.log
+freeze_dump.txt
+idm_debug.txt
+__pycache__/
+*.pyc
+.env

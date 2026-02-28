@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WITTGrp Downloader</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 360px;
+      min-height: 200px;
+      background: #1a1a2e;
+      color: #e0e0e0;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      font-size: 13px;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #0f3460, #16213e);
+      padding: 14px 16px;
+      border-bottom: 2px solid #e94560;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo {
+      font-size: 22px;
+    }
+
+    .header h1 {
+      font-size: 16px;
+      color: #e94560;
+      font-weight: 700;
+    }
+
+    .header p {
+      font-size: 11px;
+      color: #6080a0;
+      margin-top: 2px;
+    }
+
+    .add-url-section {
+      padding: 12px;
+      border-bottom: 1px solid #0f3460;
+    }
+
+    .add-url-section input {
+      width: 100%;
+      background: #0f1b35;
+      border: 1.5px solid #0f3460;
+      border-radius: 6px;
+      color: #e0e0e0;
+      padding: 8px 10px;
+      font-size: 12px;
+      margin-bottom: 8px;
+      outline: none;
+    }
+
+    .add-url-section input:focus {
+      border-color: #e94560;
+    }
+
+    .add-url-section input::placeholder {
+      color: #404060;
+    }
+
+    .btn-add {
+      width: 100%;
+      background: linear-gradient(135deg, #e94560, #c73652);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 9px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    .btn-add:hover {
+      opacity: 0.9;
+    }
+
+    .btn-add:active {
+      opacity: 0.8;
+    }
+
+    .videos-section {
+      padding: 8px 12px;
+    }
+
+    .section-title {
+      font-size: 11px;
+      color: #6080a0;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .badge {
+      background: #e94560;
+      color: white;
+      border-radius: 10px;
+      padding: 1px 7px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .video-list {
+      max-height: 250px;
+      overflow-y: auto;
+    }
+
+    .video-item {
+      background: #16213e;
+      border: 1px solid #0f3460;
+      border-radius: 6px;
+      padding: 8px 10px;
+      margin-bottom: 6px;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    .video-item:hover {
+      border-color: #e94560;
+      background: #1c2a50;
+    }
+
+    .video-name {
+      font-size: 12px;
+      color: #e0e0e0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 4px;
+    }
+
+    .video-meta {
+      font-size: 10px;
+      color: #6080a0;
+      display: flex;
+      gap: 10px;
+    }
+
+    .video-type {
+      color: #e94560;
+    }
+
+    .btn-dl {
+      background: #e94560;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      padding: 3px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      float: right;
+      margin-top: -20px;
+    }
+
+    .btn-dl:hover {
+      background: #c73652;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 20px;
+      color: #404060;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .empty-icon {
+      font-size: 32px;
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    .footer {
+      padding: 10px 12px;
+      border-top: 1px solid #0f3460;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .status-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #22c55e;
+      margin-right: 6px;
+      animation: pulse 2s infinite;
+    }
+
+    .status-dot.offline {
+      background: #f87171;
+      animation: none;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.4;
+      }
+    }
+
+    .footer-status {
+      font-size: 11px;
+      color: #6080a0;
+    }
+
+    .open-idm {
+      font-size: 11px;
+      color: #e94560;
+      cursor: pointer;
+      text-decoration: none;
+      background: none;
+      border: none;
+      padding: 0;
+    }
+
+    .open-idm:hover {
+      color: #ff6b9d;
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #16213e;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #e94560;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="header">
+    <span class="logo">⬇</span>
+    <div>
+      <h1>WITTGrp Downloader</h1>
+      <p>WITTGrp Download Manage Extension</p>
+    </div>
+  </div>
+
+  <div class="add-url-section">
+    <input type="url" id="url-input" placeholder="Paste URL to download…">
+    <button class="btn-add" id="add-btn">⬇ Send to WITTGrp</button>
+  </div>
+
+  <div class="videos-section">
+    <div class="section-title">
+      <span>Detected Media <span class="badge" id="video-count">0</span></span>
+      <span id="dl-all-btn" style="color:#e94560;cursor:pointer;font-size:11px;" onclick="downloadAll()">Download
+        All</span>
+    </div>
+    <div class="video-list" id="video-list">
+      <div class="empty-state">
+        <span class="empty-icon">🎬</span>
+        <div>No media detected on this page.<br>Browse a video page and media will appear here.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span class="footer-status"><span class="status-dot" id="status-dot"></span><span id="status-text">Checking
+        WITTGrp…</span></span>
+    <button class="open-idm" onclick="openIDM()">Open WITTGrp App →</button>
+  </div>
+
+  <script>
+    const WITTGRP_URL = 'http://127.0.0.1:9614';
+    let detectedVideos = [];
+
+    function formatSize(bytes) {
+      if (!bytes) return '';
+      const units = ['B', 'KB', 'MB', 'GB'];
+      let i = 0;
+      while (bytes >= 1024 && i < units.length - 1) { bytes /= 1024; i++; }
+      return bytes.toFixed(1) + ' ' + units[i];
+    }
+
+    // Check IDM connection
+    async function checkIDM() {
+      const dot = document.getElementById('status-dot');
+      const text = document.getElementById('status-text');
+      try {
+        const resp = await fetch(WITTGRP_URL + '/ping', {
+          method: 'POST', body: '{}',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        if (resp.ok) {
+          dot.className = 'status-dot';
+          text.textContent = 'WITTGrp Connected';
+        } else throw new Error();
+      } catch {
+        dot.className = 'status-dot offline';
+        text.textContent = 'WITTGrp Not Running';
+      }
+    }
+
+    // Load videos detected by background script
+    function loadVideos() {
+      chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
+        if (!tabs[0]) return;
+        chrome.runtime.sendMessage({ action: 'get_videos', tabId: tabs[0].id }, resp => {
+          detectedVideos = resp?.videos || [];
+          renderVideos();
+        });
+      });
+    }
+
+    function renderVideos() {
+      const container = document.getElementById('video-list');
+      document.getElementById('video-count').textContent = detectedVideos.length;
+      if (!detectedVideos.length) {
+        container.innerHTML = `<div class="empty-state">
+      <span class="empty-icon">🎬</span>
+      <div>No media detected on this page.<br>Browse a video page and media will appear here.</div>
+    </div>`;
+        return;
+      }
+      container.innerHTML = detectedVideos.map((v, i) => `
+    <div class="video-item" id="vi-${i}">
+      <button class="btn-dl" onclick="downloadVideo(${i})">⬇ WITTGrp</button>
+      <div class="video-name">${v.filename || 'video'}</div>
+      <div class="video-meta">
+        <span class="video-type">${v.mimeType || v.type || 'video'}</span>
+        ${v.size ? '<span>' + formatSize(v.size) + '</span>' : ''}
+      </div>
+    </div>
+  `).join('');
+    }
+
+    function downloadVideo(index) {
+      const v = detectedVideos[index];
+      if (!v) return;
+      chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
+        chrome.runtime.sendMessage({
+          action: 'send_to_wittgrp', url: v.url,
+          filename: v.filename, referer: tabs[0]?.url || '',
+        }, () => {
+          const item = document.getElementById(`vi-${index}`);
+          if (item) { item.style.borderColor = '#22c55e'; item.style.background = '#0d2018'; }
+        });
+      });
+    }
+
+    function downloadAll() {
+      detectedVideos.forEach((_, i) => downloadVideo(i));
+    }
+
+    document.getElementById('add-btn').onclick = () => {
+      const url = document.getElementById('url-input').value.trim();
+      if (!url) return;
+      chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
+        chrome.runtime.sendMessage({
+          action: 'send_to_wittgrp', url, filename: '',
+          referer: tabs[0]?.url || '',
+        }, () => {
+          document.getElementById('url-input').value = '';
+          document.getElementById('add-btn').textContent = '✓ Sent!';
+          setTimeout(() => document.getElementById('add-btn').textContent = '⬇  Send to WITTGrp', 2000);
+        });
+      });
+    };
+
+    function openIDM() {
+      // Can't open native apps from extension, notify user
+      alert('Please open IDM from your desktop or taskbar.');
+    }
+
+    // Auto-paste from clipboard on open
+    navigator.clipboard.readText().then(text => {
+      if (text && (text.startsWith('http://') || text.startsWith('https://'))) {
+        document.getElementById('url-input').value = text;
+      }
+    }).catch(() => { });
+
+    checkIDM();
+    loadVideos();
+    setInterval(loadVideos, 3000);
+  </script>
+</body>
+
+</html>
