@@ -145,7 +145,21 @@ def probe_url(url: str, headers: dict = None) -> Tuple[str, int, bool, str]:
     # Fallback to yt-dlp to extract raw video links for generic pages (Youtube, Twitter, etc)
     try:
         import yt_dlp
-        ydl_opts = {'format': 'best', 'noplaylist': True, 'quiet': True}
+        ydl_opts = {
+            'format': 'best', 
+            'noplaylist': True, 
+            'quiet': True,
+            'nocheckcertificate': True,
+            'socket_timeout': 30,
+            'retries': 5,
+            'extractor_retries': 3,
+            'http_headers': {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Sec-Fetch-Mode': 'navigate'
+            }
+        }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
             
