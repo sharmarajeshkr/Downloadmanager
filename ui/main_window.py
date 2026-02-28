@@ -117,10 +117,12 @@ class MainWindow(QMainWindow):
         # We need to explicitly place the menubar inside our VBox to play nice with frameless
         main_layout.addWidget(self.menuBar())
 
-        self._setup_toolbar()
+        self.toolbar = self._setup_toolbar()
+        main_layout.addWidget(self.toolbar)
 
         # Splitter: sidebar + download list
         splitter = QSplitter(Qt.Orientation.Horizontal)
+        splitter.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         splitter.setHandleWidth(1)
 
         # Sidebar
@@ -132,7 +134,7 @@ class MainWindow(QMainWindow):
         splitter.addWidget(self.table)
         splitter.setSizes([180, 900])
 
-        main_layout.addWidget(splitter)
+        main_layout.addWidget(splitter, 1)
 
         # Status bar
         self._setup_statusbar()
@@ -172,12 +174,11 @@ class MainWindow(QMainWindow):
 
         mb.addMenu("Help")
 
-    def _setup_toolbar(self):
+    def _setup_toolbar(self) -> QToolBar:
         tb = QToolBar("Main Toolbar")
         tb.setMovable(False)
         tb.setIconSize(QSize(20, 20))
         tb.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
-        self.addToolBar(tb)
 
         menu_action = QAction(QIcon(os.path.join(SVG_DIR, 'menu.svg')), "Menu", self)
         menu_action.setToolTip("Toggle Sidebar")
@@ -222,6 +223,8 @@ class MainWindow(QMainWindow):
         self.speed_label = QLabel("  🚀 0 B/s  |  ⬇ 0 active  ")
         self.speed_label.setStyleSheet("color: #4ade80; font-weight: 600; padding-right: 12px;")
         tb.addWidget(self.speed_label)
+
+        return tb
 
     def _build_sidebar(self) -> QWidget:
         sidebar = QWidget()
