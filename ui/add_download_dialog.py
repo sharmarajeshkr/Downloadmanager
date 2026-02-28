@@ -44,7 +44,8 @@ class AddDownloadDialog(QDialog):
 
         self.setWindowTitle("Add New Download")
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
-        self.setMinimumWidth(620)
+        self.setMinimumSize(600, 450)
+        self.resize(750, 450)
         self.setModal(True)
 
         self._typing_timer = QTimer(self)
@@ -162,6 +163,7 @@ class AddDownloadDialog(QDialog):
         layout.addWidget(opt_group)
 
         # Buttons
+        layout.addStretch()
         btn_row = QHBoxLayout()
         btn_row.addStretch()
         self.cancel_btn = QPushButton("Cancel")
