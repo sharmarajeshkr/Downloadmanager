@@ -95,7 +95,7 @@
         position: absolute;
         top: 8px;
         right: 8px;
-        z-index: 9999;
+        z-index: 2147483647;
         background: #e94560;
         color: white;
         border: none;
@@ -110,6 +110,16 @@
       `;
             btn.onmouseover = () => btn.style.background = '#c73652';
             btn.onmouseout = () => btn.style.background = '#e94560';
+
+            // Prevent video players from pausing by catching all mouse/pointer events
+            const stopAll = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            };
+            btn.addEventListener('mousedown', stopAll);
+            btn.addEventListener('mouseup', stopAll);
+            btn.addEventListener('pointerdown', stopAll);
+            btn.addEventListener('pointerup', stopAll);
 
             btn.onclick = (e) => {
                 e.preventDefault();
