@@ -10,7 +10,7 @@ from PyQt6.QtWidgets import (
     QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView,
     QStatusBar, QLabel, QMenu, QSystemTrayIcon, QMessageBox,
     QApplication, QProgressBar, QSplitter, QTreeWidget, QTreeWidgetItem,
-    QFrame, QSizePolicy
+    QFrame, QSizePolicy, QDialog, QCheckBox, QPushButton
 )
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QThread, QSize, QUrl
 from PyQt6.QtGui import (
@@ -123,6 +123,12 @@ class MainWindow(QMainWindow):
         dl_menu.addSeparator()
         a6 = dl_menu.addAction("Remove Completed")
         a6.triggered.connect(self._remove_completed)
+        dl_menu.addSeparator()
+        del_sel = dl_menu.addAction("🗑  Delete Selected")
+        del_sel.triggered.connect(self._delete_selected)
+        del_sel.setShortcut("Delete")
+        del_all = dl_menu.addAction("💣  Delete All")
+        del_all.triggered.connect(self._delete_all)
 
         view_menu = mb.addMenu("View")
         a7 = view_menu.addAction("Open Downloads Folder")
@@ -171,6 +177,20 @@ class MainWindow(QMainWindow):
         open_folder_action = QAction("📂  Open Folder", self)
         open_folder_action.triggered.connect(self._open_downloads_folder)
         tb.addAction(open_folder_action)
+
+        tb.addSeparator()
+
+        # ── Bulk Delete buttons ──
+        del_sel_action = QAction("🗑  Delete Selected", self)
+        del_sel_action.setToolTip("Remove selected downloads (Del)")
+        del_sel_action.triggered.connect(self._delete_selected)
+        del_sel_action.setShortcut("Delete")
+        tb.addAction(del_sel_action)
+
+        del_all_action = QAction("💣  Delete All", self)
+        del_all_action.setToolTip("Remove all downloads from list")
+        del_all_action.triggered.connect(self._delete_all)
+        tb.addAction(del_all_action)
 
         # Spacer
         spacer = QWidget()
@@ -534,6 +554,100 @@ class MainWindow(QMainWindow):
                      if t.status == DownloadStatus.COMPLETED]
         for tid in to_remove:
             self._remove_task(tid)
+
+    # ── Bulk Delete ───────────────────────────────────────────────────────
+
+    def _confirm_delete(self, title: str, message: str) -> tuple:
+        """Show a custom delete confirmation. Returns (confirmed, also_delete_files)."""
+        dlg = QDialog(self)
+        dlg.setWindowTitle(title)
+        dlg.setMinimumWidth(380)
+        dlg.setModal(True)
+
+        layout = QVBoxLayout(dlg)
+        layout.setSpacing(12)
+        layout.setContentsMargins(20, 20, 20, 20)
+
+        icon_label = QLabel("🗑")
+        icon_label.setFont(QFont("Segoe UI", 28))
+        icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(icon_label)
+
+        msg = QLabel(message)
+        msg.setWordWrap(True)
+        msg.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        msg.setFont(QFont("Segoe UI", 10))
+        layout.addWidget(msg)
+
+        also_files = QCheckBox("Also delete downloaded files from disk")
+        also_files.setFont(QFont("Segoe UI", 9))
+        layout.addWidget(also_files)
+
+        btn_row = QHBoxLayout()
+        btn_row.addStretch()
+        cancel_btn = QPushButton("Cancel")
+        cancel_btn.clicked.connect(dlg.reject)
+        cancel_btn.setMinimumWidth(90)
+        confirm_btn = QPushButton("Delete")
+        confirm_btn.setObjectName("btn_danger")
+        confirm_btn.setStyleSheet(
+            "QPushButton#btn_danger { background: #e94560; color: white; "
+            "border-radius: 6px; padding: 6px 18px; font-weight: 700; }"
+            "QPushButton#btn_danger:hover { background: #c73652; }"
+        )
+        confirm_btn.clicked.connect(dlg.accept)
+        confirm_btn.setMinimumWidth(90)
+        btn_row.addWidget(cancel_btn)
+        btn_row.addWidget(confirm_btn)
+        layout.addLayout(btn_row)
+
+        confirmed = dlg.exec() == QDialog.DialogCode.Accepted
+        return confirmed, also_files.isChecked()
+
+    def _delete_selected(self):
+        """Delete all currently selected rows from the download list."""
+        selected_rows = list(set(idx.row() for idx in self.table.selectedIndexes()))
+        if not selected_rows:
+            QMessageBox.information(self, "No Selection",
+                "Please select one or more downloads to delete.")
+            return
+
+        task_ids = []
+        for row in selected_rows:
+            item = self.table.item(row, 0)
+            if item:
+                task_ids.append(item.data(Qt.ItemDataRole.UserRole))
+
+        confirmed, delete_files = self._confirm_delete(
+            "Delete Selected",
+            f"Remove {len(task_ids)} selected download(s) from the list?"
+        )
+        if not confirmed:
+            return
+
+        for tid in task_ids:
+            self._remove_task(tid, delete=delete_files)
+
+    def _delete_all(self):
+        """Delete ALL downloads from the list."""
+        all_tasks = self.queue_manager.get_tasks()
+        if not all_tasks:
+            QMessageBox.information(self, "Empty List", "There are no downloads to delete.")
+            return
+
+        confirmed, delete_files = self._confirm_delete(
+            "Delete All",
+            f"Remove ALL {len(all_tasks)} downloads from the list?\n"
+            "Active downloads will be stopped first."
+        )
+        if not confirmed:
+            return
+
+        # Stop any running downloads first
+        self.queue_manager.stop_all()
+
+        for task in list(all_tasks):
+            self._remove_task(task.id, delete=delete_files)
 
     def _open_file(self, task):
         if os.path.exists(task.filepath):
