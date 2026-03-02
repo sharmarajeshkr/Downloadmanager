@@ -193,38 +193,66 @@
         });
     }
 
-    // ── Link Interceptor - Add IDM button on file links ───────────────────
+    // ── Global Link Interceptor ───────────────────────────────────────────
+    // Intercepts all clicks on links matching file patterns to prevent 
+    // the browser download system (and its popups) from ever starting.
 
-    function addDownloadLinksHandler() {
+    function setupGlobalInterceptor() {
         const FILE_PATTERNS = /\.(mp4|mkv|avi|mov|wmv|flv|webm|mp3|flac|zip|rar|7z|exe|msi|pdf|doc|docx|iso|apk)([\?#]|$)/i;
 
-        document.querySelectorAll('a[href]').forEach(link => {
-            if (link.getAttribute(WITTGRP_ATTR)) return;
-            if (!FILE_PATTERNS.test(link.href)) return;
-            link.setAttribute(WITTGRP_ATTR, '1');
+        document.addEventListener('click', (e) => {
+            // Find the closest anchor tag
+            const link = e.target.closest('a');
+            if (!link || !link.href) return;
 
-            const badge = document.createElement('span');
-            badge.textContent = ' ⬇';
-            badge.title = 'Click to download with IDM';
-            badge.style.cssText = `
-        color: #e94560;
-        font-size: 12px;
-        cursor: pointer;
-        font-weight: 700;
-        margin-left: 4px;
-      `;
-            badge.onclick = (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                chrome.runtime.sendMessage({
-                    action: 'send_to_wittgrp',
-                    url: link.href,
-                    filename: filenameFromURL(link.href),
-                    referer: location.href,
-                });
-            };
-            link.parentNode?.insertBefore(badge, link.nextSibling);
-        });
+            // Only intercept if it matches a file extension we handle
+            if (!FILE_PATTERNS.test(link.href)) return;
+
+            // If it's a blobs/data URL, let browser handle it (usually small/generated)
+            if (link.href.startsWith('blob:') || link.href.startsWith('data:')) return;
+
+            console.log('[WITTGrp] Intercepted link click:', link.href);
+
+            // STOP THE BROWSER from starting the download
+            e.preventDefault();
+            e.stopPropagation();
+
+            // Send to WITTGrp
+            chrome.runtime.sendMessage({
+                action: 'send_to_wittgrp',
+                url: link.href,
+                filename: filenameFromURL(link.href),
+                referer: location.href,
+            });
+
+            // Optional: visual feedback near the link
+            showClickFeedback(e.clientX, e.clientY);
+        }, true); // Use capture phase to intercept before site's own listeners
+    }
+
+    function showClickFeedback(x, y) {
+        const div = document.createElement('div');
+        div.textContent = '⬇ Sent to WITTGrp';
+        div.style.cssText = `
+            position: fixed;
+            left: ${x + 10}px;
+            top: ${y - 10}px;
+            background: #22c55e;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+            z-index: 1000000;
+            pointer-events: none;
+            transition: opacity 1s, transform 1s;
+        `;
+        document.body.appendChild(div);
+        setTimeout(() => {
+            div.style.opacity = '0';
+            div.style.transform = 'translateY(-20px)';
+            setTimeout(() => div.remove(), 1000);
+        }, 1000);
     }
 
     // ── Message Listener from Background ──────────────────────────────────
@@ -240,12 +268,11 @@
 
     function init() {
         injectDownloadButtons();
-        addDownloadLinksHandler();
+        setupGlobalInterceptor();
 
-        // Observe dynamic content
+        // Observe dynamic content for <video> injection
         const observer = new MutationObserver(() => {
             injectDownloadButtons();
-            addDownloadLinksHandler();
         });
         observer.observe(document.body || document.documentElement, {
             childList: true,
