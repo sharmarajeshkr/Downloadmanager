@@ -69,6 +69,9 @@ class AddDownloadDialog(QDialog):
         # Now connect signals (AFTER initial values are set)
         self._connect_signals()
 
+        # Set initial save path
+        self._refresh_save_path()
+
         # If we have a URL but no filename yet, kick off the probe once
         if url and not filename:
             self._typing_timer.start(400)  # short delay to let the dialog render first
@@ -212,14 +215,24 @@ class AddDownloadDialog(QDialog):
         cat = get_category(name, self.categories)
         idx = self.category_combo.findText(cat)
         if idx >= 0:
-            self.category_combo.setCurrentIndex(idx)
+            if self.category_combo.currentIndex() == idx:
+                # Same category, but filename changed - must refresh path manually
+                self._refresh_save_path()
+            else:
+                self.category_combo.setCurrentIndex(idx)
 
     def _on_category_changed(self, cat_name):
+        self._refresh_save_path()
+
+    def _refresh_save_path(self):
+        cat_name = self.category_combo.currentText()
+        fname = self.filename_edit.text()
+        if not fname:
+            fname = "download" # placeholder until detected
+
         for c in self.categories:
             if c['name'] == cat_name:
-                fname = self.filename_edit.text()
-                if fname:
-                    self.save_path_edit.setText(os.path.join(c['save_path'], fname))
+                self.save_path_edit.setText(os.path.join(c['save_path'], fname))
                 break
 
     def _probe_url(self):
@@ -268,10 +281,6 @@ class AddDownloadDialog(QDialog):
             self._auto_probe_done = False  # Allow manual retry via button
             self.size_label.setText("Unknown (streaming?)")
             self.probe_status.setText("\u26a0 Could not detect file size \u2014 click Detect Info to retry")
-
-        # Update save path
-        cat = self.category_combo.currentText()
-        self._on_category_changed(cat)
 
     def _browse_save_path(self):
         fname = self.filename_edit.text() or "download"
