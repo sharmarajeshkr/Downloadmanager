@@ -77,8 +77,8 @@ def filename_from_url(url: str, content_disposition: Optional[str] = None) -> st
     if name and '.' in name:
         return sanitize_filename(name)
 
-    # Fallback
-    return "download_" + str(int(os.times().elapsed))
+    # No filename could be determined — let the caller decide
+    return ""
 
 
 def sanitize_filename(name: str) -> str:

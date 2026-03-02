@@ -28,9 +28,13 @@ _CHROME_UA = (
 
 def _make_content_disposition(title: str, ext: str) -> str:
     """Build a safe Content-Disposition filename= string from a title."""
-    # Remove characters that are invalid in filenames
+    # Strip emoji and non-ASCII characters (Windows filesystem + HTTP headers)
+    title = title.encode("ascii", errors="ignore").decode("ascii")
+    # Remove characters invalid in Windows filenames
     safe = re.sub(r'[<>:"/\\|?*\x00-\x1f]', '_', title).strip('. ')
-    safe = safe[:120] if safe else "download"
+    # Collapse multiple spaces/underscores
+    safe = re.sub(r'[_\s]{2,}', ' ', safe).strip()
+    safe = safe[:120] if safe else "youtube_video"
     return f'filename="{safe}.{ext}"'
 
 
@@ -64,6 +68,12 @@ class GenericHttpScraper:
             cd = resp.headers.get("Content-Disposition", "")
 
             if size > 0 and "text/html" not in ct:
+                # YouTube CDN URLs (googlevideo.com) have no Content-Disposition.
+                # Skip them here so YouTubeScraper gets a chance to provide the real title.
+                final_domain = urllib.parse.urlparse(resp.url).netloc.lower()
+                if "googlevideo.com" in final_domain or "youtube.com" in final_domain:
+                    logger.info("[GenericHTTP] YouTube CDN URL — deferring to YouTubeScraper")
+                    return None
                 logger.info(f"[GenericHTTP] Direct file: {size} bytes")
                 return resp.url, size, accepts, cd
         except Exception as e:
@@ -102,18 +112,10 @@ class YouTubeScraper:
         )
         return urllib.parse.urlunparse(parsed._replace(query=new_query))
 
-    def probe(self, url: str, headers: dict = None) -> Optional[ProbeResult]:
-        try:
-            import yt_dlp
-        except ImportError:
-            logger.error("[YouTube] yt-dlp not installed")
-            return None
-
-        clean_url = self._strip_playlist(url)
-        logger.info(f"[YouTube] Probing: {clean_url}")
-
-        ydl_opts = {
-            "format": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+    @staticmethod
+    def _build_ydl_opts(fmt: str) -> dict:
+        return {
+            "format": fmt,
             "noplaylist": True,
             "quiet": True,
             "no_warnings": True,
@@ -128,33 +130,76 @@ class YouTubeScraper:
             },
         }
 
+    def probe(self, url: str, headers: dict = None) -> Optional[ProbeResult]:
         try:
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(clean_url, download=False)
-
-            # For merged formats, video URL is in the first format entry
-            final_url = info.get("url") or (
-                info.get("requested_formats", [{}])[0].get("url", url)
-            )
-            size = (
-                info.get("filesize")
-                or info.get("filesize_approx")
-                or sum(
-                    f.get("filesize") or f.get("filesize_approx") or 0
-                    for f in info.get("requested_formats", [])
-                )
-                or 0
-            )
-            title = info.get("title") or info.get("id") or "youtube_video"
-            ext = info.get("ext") or "mp4"
-            cd = _make_content_disposition(title, ext)
-
-            logger.info(f"[YouTube] OK — title={title!r} size={size} ext={ext}")
-            return final_url, int(size), True, cd
-
-        except Exception as e:
-            logger.error(f"[YouTube] yt-dlp extraction failed: {e}")
+            import yt_dlp
+        except ImportError:
+            logger.error("[YouTube] yt-dlp not installed")
             return None
+
+        clean_url = self._strip_playlist(url)
+        logger.info(f"[YouTube] Probing (clean): {clean_url}")
+
+        # Three format tiers — try each until one gives a usable direct URL
+        FORMAT_CHAIN = [
+            "best[ext=mp4]",               # Tier 1: pre-merged mp4 (fastest, single URL)
+            "best",                         # Tier 2: best available single stream
+            "bestvideo[ext=mp4]+bestaudio", # Tier 3: separate video+audio (biggest)
+        ]
+
+        for fmt in FORMAT_CHAIN:
+            try:
+                opts = self._build_ydl_opts(fmt)
+                with yt_dlp.YoutubeDL(opts) as ydl:
+                    info = ydl.extract_info(clean_url, download=False)
+
+                # Pull title from info dict first
+                title = (
+                    info.get("title")
+                    or info.get("fulltitle")
+                    or info.get("id")
+                    or "youtube_video"
+                )
+                ext = info.get("ext") or "mp4"
+
+                # Pick the best downloadable URL
+                final_url = info.get("url")  # present for single-stream formats
+                if not final_url:
+                    # Merged / requested_formats path
+                    fmts = info.get("requested_formats") or info.get("formats") or []
+                    # Prefer the video format (largest stream)
+                    video_fmts = [f for f in fmts if f.get("vcodec", "none") != "none"]
+                    if video_fmts:
+                        final_url = video_fmts[0].get("url")
+                        ext = video_fmts[0].get("ext") or ext
+
+                if not final_url:
+                    logger.warning(f"[YouTube] Format {fmt!r}: no URL in info — trying next")
+                    continue
+
+                # Aggregate file size
+                size = (
+                    info.get("filesize")
+                    or info.get("filesize_approx")
+                    or sum(
+                        (f.get("filesize") or f.get("filesize_approx") or 0)
+                        for f in info.get("requested_formats") or []
+                    )
+                    or 0
+                )
+
+                cd = _make_content_disposition(title, ext)
+                logger.info(
+                    f"[YouTube] OK (fmt={fmt!r}) — title={title!r} size={size} ext={ext}"
+                )
+                return final_url, int(size), True, cd
+
+            except Exception as e:
+                logger.warning(f"[YouTube] Format {fmt!r} failed: {e} — trying next")
+                continue
+
+        logger.error(f"[YouTube] All format tiers exhausted for {clean_url}")
+        return None
 
 
 # ─────────────────────────────────────────────────────────────────────────────

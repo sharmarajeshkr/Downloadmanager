@@ -175,14 +175,18 @@ class AddDownloadDialog(QDialog):
         self.speed_check.toggled.connect(self.speed_spin.setEnabled)
 
     def _on_url_changed(self, text):
+        # Only auto-fill filename from the URL if it contains a proper extensioned filename
+        # (e.g. https://example.com/file.mp4 → "file.mp4"). 
+        # Never pre-fill with the probe fallback — the probe result will do that properly.
         if text and not self.filename_edit.text():
             name = filename_from_url(text)
-            if name:
+            if name and '.' in name:  # only set if a REAL filename was extracted
                 self.filename_edit.setText(name)
                 self._on_filename_changed(name)
-        
+
+        # Auto-probe 800 ms after the user stops typing
         if text.strip().startswith('http'):
-            self._typing_timer.start(800)  # Auto-detect 800ms after typing stops
+            self._typing_timer.start(800)
         else:
             self._typing_timer.stop()
 
