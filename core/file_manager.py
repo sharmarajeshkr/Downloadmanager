@@ -16,7 +16,10 @@ EXTENSION_CATEGORIES = {
     'Archives':  ['zip','rar','7z','tar','gz','bz2','xz','cab'],
 }
 
-BASE_DOWNLOAD_DIR = r'D:\idm\downloads'
+# Base download directory: user's Downloads folder / WITTGrp
+# Respect the setting from DB if available, otherwise use OS default
+_USER_DOWNLOADS = os.path.join(os.path.expanduser('~'), 'Downloads', 'WITTGrp')
+BASE_DOWNLOAD_DIR = _USER_DOWNLOADS
 
 
 def get_category(filename: str, custom_categories: Optional[list] = None) -> str:

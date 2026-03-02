@@ -65,11 +65,12 @@ class Database:
             );
         """)
         # Insert default settings
+        _dl_base = os.path.join(os.path.expanduser('~'), 'Downloads', 'WITTGrp')
         defaults = {
             'max_concurrent': '3',
             'default_connections': '8',
             'speed_limit': '0',
-            'save_path': r'D:\idm\downloads\Other',
+            'save_path': os.path.join(_dl_base, 'Other'),
             'minimize_to_tray': 'true',
             'monitor_clipboard': 'true',
             'extension_server_port': '9614',
@@ -79,17 +80,35 @@ class Database:
         for k, v in defaults.items():
             conn.execute("INSERT OR IGNORE INTO settings VALUES (?, ?)", (k, v))
 
-        # Default categories
+        # Default categories — each file type gets its own sub-folder
         cats = [
-            ('Videos',    json.dumps(['mp4','mkv','avi','mov','wmv','flv','webm','m4v','ts','mpeg','mpg','3gp','vob','rmvb','divx']), r'D:\idm\downloads\Videos'),
-            ('Music',     json.dumps(['mp3','flac','aac','ogg','wav','wma','m4a','opus','alac']), r'D:\idm\downloads\Music'),
-            ('Documents', json.dumps(['pdf','doc','docx','xls','xlsx','ppt','pptx','txt','epub','odt','csv','rtf']), r'D:\idm\downloads\Documents'),
-            ('Programs',  json.dumps(['exe','msi','dmg','pkg','deb','rpm','apk','iso','img']), r'D:\idm\downloads\Programs'),
-            ('Archives',  json.dumps(['zip','rar','7z','tar','gz','bz2','xz','cab','tar.gz','tar.bz2']), r'D:\idm\downloads\Archives'),
-            ('Other',     json.dumps([]),  r'D:\idm\downloads\Other'),
+            ('Videos',    json.dumps(['mp4','mkv','avi','mov','wmv','flv','webm','m4v','ts','mpeg','mpg','3gp','vob','rmvb','divx','m2ts']),
+                          os.path.join(_dl_base, 'Videos')),
+            ('Music',     json.dumps(['mp3','flac','aac','ogg','wav','wma','m4a','opus','alac','aiff']),
+                          os.path.join(_dl_base, 'Music')),
+            ('Documents', json.dumps(['pdf','doc','docx','xls','xlsx','ppt','pptx','txt','epub','odt','csv','rtf','md']),
+                          os.path.join(_dl_base, 'Documents')),
+            ('Programs',  json.dumps(['exe','msi','dmg','pkg','deb','rpm','apk','iso','img','bin','run']),
+                          os.path.join(_dl_base, 'Programs')),
+            ('Archives',  json.dumps(['zip','rar','7z','tar','gz','bz2','xz','cab']),
+                          os.path.join(_dl_base, 'Archives')),
+            ('Other',     json.dumps([]),
+                          os.path.join(_dl_base, 'Other')),
         ]
         for cat in cats:
             conn.execute("INSERT OR IGNORE INTO categories VALUES (?, ?, ?)", cat)
+
+        # Migration: update any old hardcoded D:\idm\downloads paths to new ~/Downloads/WITTGrp paths
+        for name, _, new_path in cats:
+            conn.execute(
+                "UPDATE categories SET save_path = ? WHERE name = ? AND save_path LIKE ?",
+                (new_path, name, r'D:\idm\downloads%')
+            )
+        # Also migrate old settings save_path if still pointing to D:\idm\downloads
+        conn.execute(
+            "UPDATE settings SET value = ? WHERE key = 'save_path' AND value LIKE ?",
+            (os.path.join(_dl_base, 'Other'), r'D:\idm\downloads%')
+        )
         conn.commit()
         conn.close()
 
