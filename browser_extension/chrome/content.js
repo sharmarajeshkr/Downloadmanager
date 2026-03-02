@@ -82,6 +82,53 @@
         return '';
     }
 
+    /**
+     * Returns the cleanest possible URL for the current page's video.
+     *
+     * YouTube   → https://youtu.be/VIDEO_ID  (same as "Copy video URL" menu item)
+     *              strips list=, start_radio=, index= params
+     * Streaming → window.location.href
+     * Other     → actual <video> src
+     */
+    function getCleanVideoURL(videoEl) {
+        const hostname = window.location.hostname;
+
+        // ---- YouTube: extract clean youtu.be short link ----
+        if (hostname.includes('youtube.com') || hostname.includes('youtu.be')) {
+            try {
+                const params = new URLSearchParams(window.location.search);
+                const videoId = params.get('v');
+                if (videoId) {
+                    // Exactly what YouTube "Copy video URL" produces
+                    return `https://youtu.be/${videoId}`;
+                }
+            } catch (err) { console.warn('[WITTGrp] YT URL parse error:', err); }
+            // Fallback: full page URL (e.g. youtu.be/ID?...)
+            return window.location.href;
+        }
+
+        // ---- Other known streaming sites: send page URL ----
+        const STREAMING_SITES = [
+            'vimeo.com', 'dailymotion.com',
+            'twitter.com', 'x.com',
+            'facebook.com', 'instagram.com',
+            'tiktok.com', 'twitch.tv',
+            'xvideos.com', 'xhamster.com',
+        ];
+        if (STREAMING_SITES.some(d => hostname.includes(d))) {
+            return window.location.href;
+        }
+
+        // ---- Regular sites: use actual video src ----
+        if (videoEl) {
+            const src = videoEl.currentSrc || videoEl.src;
+            if (src && !src.startsWith('blob:') && src.startsWith('http')) {
+                return src;
+            }
+        }
+        return window.location.href; // final fallback
+    }
+
     // ── Inject Download Buttons on Video Elements ──────────────────────────
 
     function injectDownloadButtons() {
@@ -116,33 +163,7 @@
                 e.preventDefault();
                 e.stopPropagation();
 
-                // For YouTube and streaming sites, always send the page URL.
-                // The WITTGrp desktop app uses yt-dlp to extract the best
-                // quality stream and real title from the page URL.
-                // Sending the internal CDN/signed URL would give a wrong title.
-                const STREAMING_SITES = [
-                    'youtube.com', 'youtu.be',
-                    'vimeo.com', 'dailymotion.com',
-                    'twitter.com', 'x.com',
-                    'facebook.com', 'instagram.com',
-                    'tiktok.com', 'twitch.tv',
-                    'xvideos.com', 'xhamster.com',
-                ];
-                const isStreamingSite = STREAMING_SITES.some(
-                    d => window.location.hostname.includes(d)
-                );
-
-                let src;
-                if (isStreamingSite) {
-                    // Always send the page URL for streaming sites
-                    src = window.location.href;
-                } else {
-                    // For other sites, use the actual video src
-                    src = video.currentSrc || video.src;
-                    if (!src || src.startsWith('blob:')) {
-                        src = window.location.href; // fallback to page
-                    }
-                }
+                let src = getCleanVideoURL(video);
 
                 if (src) {
                     const payload = {
