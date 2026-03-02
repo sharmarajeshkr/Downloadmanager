@@ -93,8 +93,9 @@
             btn.textContent = '⬇ Download';
             btn.style.cssText = `
         position: absolute;
-        top: 8px;
+        top: 50%;
         right: 8px;
+        transform: translateY(-50%);
         z-index: 9999;
         background: #e94560;
         color: white;
@@ -114,24 +115,49 @@
             btn.onclick = (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                let src = video.currentSrc || video.src;
-                if (src && src.startsWith('blob:')) {
+
+                // For YouTube and streaming sites, always send the page URL.
+                // The WITTGrp desktop app uses yt-dlp to extract the best
+                // quality stream and real title from the page URL.
+                // Sending the internal CDN/signed URL would give a wrong title.
+                const STREAMING_SITES = [
+                    'youtube.com', 'youtu.be',
+                    'vimeo.com', 'dailymotion.com',
+                    'twitter.com', 'x.com',
+                    'facebook.com', 'instagram.com',
+                    'tiktok.com', 'twitch.tv',
+                    'xvideos.com', 'xhamster.com',
+                ];
+                const isStreamingSite = STREAMING_SITES.some(
+                    d => window.location.hostname.includes(d)
+                );
+
+                let src;
+                if (isStreamingSite) {
+                    // Always send the page URL for streaming sites
                     src = window.location.href;
-                } else if (!src && window.location.hostname.includes('youtube')) {
-                    src = window.location.href;
+                } else {
+                    // For other sites, use the actual video src
+                    src = video.currentSrc || video.src;
+                    if (!src || src.startsWith('blob:')) {
+                        src = window.location.href; // fallback to page
+                    }
                 }
+
                 if (src) {
-                    chrome.runtime.sendMessage({
+                    const payload = {
                         action: 'send_to_wittgrp',
                         url: src,
-                        filename: filenameFromURL(src) || 'video.mp4',
+                        filename: '',           // let the app detect it
                         referer: location.href,
-                    });
+                    };
+                    console.log('[WITTGrp Extension] ⬇ Download button clicked!', payload);
+                    chrome.runtime.sendMessage(payload);
                     btn.textContent = '✓ Sent to WITTGrp';
                     btn.style.background = '#22c55e';
                     setTimeout(() => {
                         btn.textContent = '⬇ Download';
-                        btn.style.background = '#e94560';
+                        btn.style.background = '#0A84FF';
                     }, 3000);
                 }
             };
