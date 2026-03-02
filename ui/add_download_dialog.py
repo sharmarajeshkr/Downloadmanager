@@ -219,11 +219,18 @@ class AddDownloadDialog(QDialog):
 
     def _on_probe_result(self, final_url, size, accepts_ranges, content_disposition):
         self.probe_btn.setEnabled(True)
-        if final_url != self.url_edit.text():
-            self.url_edit.setText(final_url)
+        # Stop the typing timer to prevent re-probing the CDN URL we are about to set
+        self._typing_timer.stop()
 
+        # Update URL field WITHOUT triggering _on_url_changed (which would restart re-probe)
+        if final_url != self.url_edit.text():
+            self.url_edit.blockSignals(True)
+            self.url_edit.setText(final_url)
+            self.url_edit.blockSignals(False)
+
+        # Set filename from content-disposition (probe result always takes priority)
         name = filename_from_url(final_url, content_disposition)
-        if name:
+        if name and name != self.filename_edit.text():
             self.filename_edit.setText(name)
             self._on_filename_changed(name)
 

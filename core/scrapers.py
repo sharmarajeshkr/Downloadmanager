@@ -68,16 +68,27 @@ class GenericHttpScraper:
             cd = resp.headers.get("Content-Disposition", "")
 
             if size > 0 and "text/html" not in ct:
-                # YouTube CDN URLs (googlevideo.com) have no Content-Disposition.
-                # Skip them here so YouTubeScraper gets a chance to provide the real title.
+                logger.info(f"[GenericHTTP] Direct file: {size} bytes, ct={ct!r}")
+                # For YouTube CDN URLs (googlevideo.com), HEAD works but no Content-Disposition.
+                # Extract size from the clen= query param which is always present in signed URLs.
                 final_domain = urllib.parse.urlparse(resp.url).netloc.lower()
-                if "googlevideo.com" in final_domain or "youtube.com" in final_domain:
-                    logger.info("[GenericHTTP] YouTube CDN URL — deferring to YouTubeScraper")
-                    return None
-                logger.info(f"[GenericHTTP] Direct file: {size} bytes")
+                if "googlevideo.com" in final_domain and not cd:
+                    qs = urllib.parse.parse_qs(urllib.parse.urlparse(resp.url).query)
+                    clen = int(qs.get("clen", [str(size)])[0])
+                    cd = 'filename="youtube_video.mp4"'  # Placeholder; caller can override
+                    logger.info(f"[GenericHTTP] YouTube CDN: clen={clen}")
+                    return resp.url, clen or size, True, cd
                 return resp.url, size, accepts, cd
         except Exception as e:
             logger.debug(f"[GenericHTTP] HEAD failed: {e}")
+
+        # For YouTube CDN URLs that fail HEAD, try extracting size from the clen= param in URL
+        parsed_qs = urllib.parse.parse_qs(urllib.parse.urlparse(url).query)
+        if "googlevideo.com" in urllib.parse.urlparse(url).netloc.lower() and "clen" in parsed_qs:
+            clen = int(parsed_qs["clen"][0])
+            logger.info(f"[GenericHTTP] YouTube CDN fallback via clen param: {clen}")
+            return url, clen, True, 'filename="youtube_video.mp4"'
+
         return None
 
 
