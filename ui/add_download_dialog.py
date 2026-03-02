@@ -38,7 +38,8 @@ class AddDownloadDialog(QDialog):
         self.db = db
         self.extra_headers = extra_headers or {}
         self._probe_thread = None
-        self._probe_done = False        # True after first successful probe
+        self._auto_probe_done = False   # True after ANY probe fires (blocks timer re-fire only)
+        self._probe_in_progress = False  # True while yt-dlp is running
         self._probed_size = 0
         self._original_url = url        # Keep the original YouTube/page URL
 
@@ -59,7 +60,7 @@ class AddDownloadDialog(QDialog):
             self.url_edit.setText(url)
         if filename:
             self.filename_edit.setText(filename)
-            self._probe_done = True  # filename supplied by caller — no need to probe
+            self._auto_probe_done = True  # filename supplied — no need to probe
         if referer:
             self.referer_edit.setText(referer)
         self.url_edit.blockSignals(False)
@@ -70,7 +71,7 @@ class AddDownloadDialog(QDialog):
 
         # If we have a URL but no filename yet, kick off the probe once
         if url and not filename:
-            self._typing_timer.start(200)  # short delay to let the dialog render first
+            self._typing_timer.start(400)  # short delay to let the dialog render first
 
 
     def _build_ui(self):
@@ -188,13 +189,11 @@ class AddDownloadDialog(QDialog):
         self.speed_check.toggled.connect(self.speed_spin.setEnabled)
 
     def _on_url_changed(self, text):
-        # Reset probe state so user can manually re-probe after changing the URL
-        self._probe_done = False
+        # User changed URL manually — reset auto-probe state
+        self._auto_probe_done = False
         self._original_url = text
 
-        # Only auto-fill filename from the URL if it contains a real extensioned filename
-        # e.g. https://cdn.example.com/video.mp4 → "video.mp4"
-        # Never pre-fill from watch/page URLs (youtube.com/watch, etc.)
+        # Only auto-fill filename from URL if it has a proper extension (e.g. file.mp4)
         if text and not self.filename_edit.text():
             name = filename_from_url(text)
             if name and '.' in name:
@@ -227,11 +226,13 @@ class AddDownloadDialog(QDialog):
         url = self.url_edit.text().strip()
         if not url or not url.startswith('http'):
             return
-        if self._probe_done:
-            return  # Already probed successfully — don't re-probe CDN redirect
-        if not self.probe_btn.isEnabled():
-            return  # Already probing
-        self.probe_status.setText("\u231b Detecting file info…")
+        if self._probe_in_progress:
+            return  # Already probing, don't start another
+        if self._auto_probe_done and not self.probe_btn.isEnabled():
+            return  # Guard: timer re-fire while probe in progress
+        self._auto_probe_done = True    # Block the 800ms timer from firing again
+        self._probe_in_progress = True
+        self.probe_status.setText("\u231b Detecting file info\u2026")
         self.probe_btn.setEnabled(False)
         # Always probe the original URL, not a CDN redirect
         probe_target = self._original_url or url
@@ -241,17 +242,17 @@ class AddDownloadDialog(QDialog):
         self._probe_thread.start()
 
     def _on_probe_result(self, final_url, size, accepts_ranges, content_disposition):
+        self._probe_in_progress = False
         self.probe_btn.setEnabled(True)
-        self._typing_timer.stop()       # Stop any pending re-probe
-        self._probe_done = True         # Lock: no further automatic re-probing
+        self._typing_timer.stop()    # Stop any pending timer re-fire
 
-        # Update URL field to final CDN URL WITHOUT triggering _on_url_changed
+        # Update URL field to CDN URL WITHOUT triggering _on_url_changed
         if final_url and final_url != self.url_edit.text():
             self.url_edit.blockSignals(True)
             self.url_edit.setText(final_url)
             self.url_edit.blockSignals(False)
 
-        # Set filename — content_disposition from probe always wins over URL guess
+        # Extract filename: use _original_url for YouTube-style page URLs
         name = filename_from_url(self._original_url or final_url, content_disposition)
         if name and name != self.filename_edit.text():
             self.filename_edit.blockSignals(True)
@@ -264,8 +265,9 @@ class AddDownloadDialog(QDialog):
             self.size_label.setText(format_size(size) + (" (resumable)" if accepts_ranges else ""))
             self.probe_status.setText("\u2713 File info detected" + ("" if accepts_ranges else " (no resume support)"))
         else:
+            self._auto_probe_done = False  # Allow manual retry via button
             self.size_label.setText("Unknown (streaming?)")
-            self.probe_status.setText("\u26a0 Could not detect file size")
+            self.probe_status.setText("\u26a0 Could not detect file size \u2014 click Detect Info to retry")
 
         # Update save path
         cat = self.category_combo.currentText()
