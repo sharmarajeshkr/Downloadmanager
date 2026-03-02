@@ -38,6 +38,9 @@ class AddDownloadDialog(QDialog):
         self.db = db
         self.extra_headers = extra_headers or {}
         self._probe_thread = None
+        self._probe_done = False        # True after first successful probe
+        self._probed_size = 0
+        self._original_url = url        # Keep the original YouTube/page URL
 
         self.setWindowTitle("Add New Download")
         self.setMinimumWidth(620)
@@ -48,17 +51,27 @@ class AddDownloadDialog(QDialog):
         self._typing_timer.timeout.connect(self._probe_url)
 
         self._build_ui()
-        self._connect_signals()
 
+        # Set initial values with signals BLOCKED so we don't trigger premature probes
+        self.url_edit.blockSignals(True)
+        self.filename_edit.blockSignals(True)
         if url:
             self.url_edit.setText(url)
         if filename:
             self.filename_edit.setText(filename)
+            self._probe_done = True  # filename supplied by caller — no need to probe
         if referer:
             self.referer_edit.setText(referer)
-        
-        # The URL probe will automatically launch 800ms after the URL box text is set 
-        # via the _typing_timer, preventing 0ms race-requests that trip anti-bot filters.
+        self.url_edit.blockSignals(False)
+        self.filename_edit.blockSignals(False)
+
+        # Now connect signals (AFTER initial values are set)
+        self._connect_signals()
+
+        # If we have a URL but no filename yet, kick off the probe once
+        if url and not filename:
+            self._typing_timer.start(200)  # short delay to let the dialog render first
+
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
@@ -175,13 +188,19 @@ class AddDownloadDialog(QDialog):
         self.speed_check.toggled.connect(self.speed_spin.setEnabled)
 
     def _on_url_changed(self, text):
-        # Only auto-fill filename from the URL if it contains a proper extensioned filename
-        # (e.g. https://example.com/file.mp4 → "file.mp4"). 
-        # Never pre-fill with the probe fallback — the probe result will do that properly.
+        # Reset probe state so user can manually re-probe after changing the URL
+        self._probe_done = False
+        self._original_url = text
+
+        # Only auto-fill filename from the URL if it contains a real extensioned filename
+        # e.g. https://cdn.example.com/video.mp4 → "video.mp4"
+        # Never pre-fill from watch/page URLs (youtube.com/watch, etc.)
         if text and not self.filename_edit.text():
             name = filename_from_url(text)
-            if name and '.' in name:  # only set if a REAL filename was extracted
+            if name and '.' in name:
+                self.filename_edit.blockSignals(True)
                 self.filename_edit.setText(name)
+                self.filename_edit.blockSignals(False)
                 self._on_filename_changed(name)
 
         # Auto-probe 800 ms after the user stops typing
@@ -208,41 +227,47 @@ class AddDownloadDialog(QDialog):
         url = self.url_edit.text().strip()
         if not url or not url.startswith('http'):
             return
+        if self._probe_done:
+            return  # Already probed successfully — don't re-probe CDN redirect
         if not self.probe_btn.isEnabled():
             return  # Already probing
-        self.probe_status.setText("⌛ Detecting file info…")
+        self.probe_status.setText("\u231b Detecting file info…")
         self.probe_btn.setEnabled(False)
+        # Always probe the original URL, not a CDN redirect
+        probe_target = self._original_url or url
         referer = self.referer_edit.text().strip()
-        self._probe_thread = ProbeThread(url, referer)
+        self._probe_thread = ProbeThread(probe_target, referer)
         self._probe_thread.result.connect(self._on_probe_result)
         self._probe_thread.start()
 
     def _on_probe_result(self, final_url, size, accepts_ranges, content_disposition):
         self.probe_btn.setEnabled(True)
-        # Stop the typing timer to prevent re-probing the CDN URL we are about to set
-        self._typing_timer.stop()
+        self._typing_timer.stop()       # Stop any pending re-probe
+        self._probe_done = True         # Lock: no further automatic re-probing
 
-        # Update URL field WITHOUT triggering _on_url_changed (which would restart re-probe)
-        if final_url != self.url_edit.text():
+        # Update URL field to final CDN URL WITHOUT triggering _on_url_changed
+        if final_url and final_url != self.url_edit.text():
             self.url_edit.blockSignals(True)
             self.url_edit.setText(final_url)
             self.url_edit.blockSignals(False)
 
-        # Set filename from content-disposition (probe result always takes priority)
-        name = filename_from_url(final_url, content_disposition)
+        # Set filename — content_disposition from probe always wins over URL guess
+        name = filename_from_url(self._original_url or final_url, content_disposition)
         if name and name != self.filename_edit.text():
+            self.filename_edit.blockSignals(True)
             self.filename_edit.setText(name)
+            self.filename_edit.blockSignals(False)
             self._on_filename_changed(name)
 
         if size > 0:
             self._probed_size = size
             self.size_label.setText(format_size(size) + (" (resumable)" if accepts_ranges else ""))
-            self.probe_status.setText("✓ File info detected" + ("" if accepts_ranges else " (no resume support)"))
+            self.probe_status.setText("\u2713 File info detected" + ("" if accepts_ranges else " (no resume support)"))
         else:
             self.size_label.setText("Unknown (streaming?)")
-            self.probe_status.setText("⚠ Could not detect file size")
+            self.probe_status.setText("\u26a0 Could not detect file size")
 
-        # Update save path based on detected name
+        # Update save path
         cat = self.category_combo.currentText()
         self._on_category_changed(cat)
 
