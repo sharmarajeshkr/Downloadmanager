@@ -336,6 +336,11 @@ class MainWindow(QMainWindow):
         self._refresh_task_row(row, task)
 
     def _update_task_row(self, task):
+        # Guard: only process DownloadTask objects (cross-thread signal delivery can
+        # occasionally pass unexpected Qt objects on some PyQt6 builds)
+        from core.queue_manager import DownloadTask
+        if not isinstance(task, DownloadTask):
+            return
         if task.id not in self._task_rows:
             self._add_task_row(task)
         else:
