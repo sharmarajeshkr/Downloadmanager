@@ -8,7 +8,7 @@ from PyQt6.QtWidgets import (
     QPushButton, QFileDialog, QSpinBox, QComboBox, QCheckBox,
     QGroupBox, QFormLayout, QProgressBar
 )
-from PyQt6.QtCore import Qt, pyqtSignal, QThread
+from PyQt6.QtCore import Qt, pyqtSignal, QThread, QTimer
 from PyQt6.QtGui import QFont, QIcon
 from core.file_manager import filename_from_url, probe_url, get_category, format_size
 
@@ -38,22 +38,41 @@ class AddDownloadDialog(QDialog):
         self.db = db
         self.extra_headers = extra_headers or {}
         self._probe_thread = None
+        self._auto_probe_done = False   # True after ANY probe fires (blocks timer re-fire only)
+        self._probe_in_progress = False  # True while yt-dlp is running
+        self._probed_size = 0
+        self._original_url = url        # Keep the original YouTube/page URL
 
         self.setWindowTitle("Add New Download")
         self.setMinimumWidth(620)
         self.setModal(True)
 
-        self._build_ui()
-        self._connect_signals()
+        self._typing_timer = QTimer(self)
+        self._typing_timer.setSingleShot(True)
+        self._typing_timer.timeout.connect(self._probe_url)
 
+        self._build_ui()
+
+        # Set initial values with signals BLOCKED so we don't trigger premature probes
+        self.url_edit.blockSignals(True)
+        self.filename_edit.blockSignals(True)
         if url:
             self.url_edit.setText(url)
         if filename:
             self.filename_edit.setText(filename)
+            self._auto_probe_done = True  # filename supplied — no need to probe
         if referer:
             self.referer_edit.setText(referer)
-        if url:
-            self._probe_url()
+        self.url_edit.blockSignals(False)
+        self.filename_edit.blockSignals(False)
+
+        # Now connect signals (AFTER initial values are set)
+        self._connect_signals()
+
+        # If we have a URL but no filename yet, kick off the probe once
+        if url and not filename:
+            self._typing_timer.start(400)  # short delay to let the dialog render first
+
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
@@ -170,11 +189,24 @@ class AddDownloadDialog(QDialog):
         self.speed_check.toggled.connect(self.speed_spin.setEnabled)
 
     def _on_url_changed(self, text):
+        # User changed URL manually — reset auto-probe state
+        self._auto_probe_done = False
+        self._original_url = text
+
+        # Only auto-fill filename from URL if it has a proper extension (e.g. file.mp4)
         if text and not self.filename_edit.text():
             name = filename_from_url(text)
-            if name:
+            if name and '.' in name:
+                self.filename_edit.blockSignals(True)
                 self.filename_edit.setText(name)
+                self.filename_edit.blockSignals(False)
                 self._on_filename_changed(name)
+
+        # Auto-probe 800 ms after the user stops typing
+        if text.strip().startswith('http'):
+            self._typing_timer.start(800)
+        else:
+            self._typing_timer.stop()
 
     def _on_filename_changed(self, name):
         cat = get_category(name, self.categories)
@@ -192,34 +224,52 @@ class AddDownloadDialog(QDialog):
 
     def _probe_url(self):
         url = self.url_edit.text().strip()
-        if not url:
+        if not url or not url.startswith('http'):
             return
-        self.probe_status.setText("⌛ Detecting file info…")
+        if self._probe_in_progress:
+            return  # Already probing, don't start another
+        if self._auto_probe_done and not self.probe_btn.isEnabled():
+            return  # Guard: timer re-fire while probe in progress
+        self._auto_probe_done = True    # Block the 800ms timer from firing again
+        self._probe_in_progress = True
+        self.probe_status.setText("\u231b Detecting file info\u2026")
         self.probe_btn.setEnabled(False)
+        # Always probe the original URL, not a CDN redirect
+        probe_target = self._original_url or url
         referer = self.referer_edit.text().strip()
-        self._probe_thread = ProbeThread(url, referer)
+        self._probe_thread = ProbeThread(probe_target, referer)
         self._probe_thread.result.connect(self._on_probe_result)
         self._probe_thread.start()
 
     def _on_probe_result(self, final_url, size, accepts_ranges, content_disposition):
+        self._probe_in_progress = False
         self.probe_btn.setEnabled(True)
-        if final_url != self.url_edit.text():
-            self.url_edit.setText(final_url)
+        self._typing_timer.stop()    # Stop any pending timer re-fire
 
-        name = filename_from_url(final_url, content_disposition)
-        if name:
+        # Update URL field to CDN URL WITHOUT triggering _on_url_changed
+        if final_url and final_url != self.url_edit.text():
+            self.url_edit.blockSignals(True)
+            self.url_edit.setText(final_url)
+            self.url_edit.blockSignals(False)
+
+        # Extract filename: use _original_url for YouTube-style page URLs
+        name = filename_from_url(self._original_url or final_url, content_disposition)
+        if name and name != self.filename_edit.text():
+            self.filename_edit.blockSignals(True)
             self.filename_edit.setText(name)
+            self.filename_edit.blockSignals(False)
             self._on_filename_changed(name)
 
         if size > 0:
             self._probed_size = size
             self.size_label.setText(format_size(size) + (" (resumable)" if accepts_ranges else ""))
-            self.probe_status.setText("✓ File info detected" + ("" if accepts_ranges else " (no resume support)"))
+            self.probe_status.setText("\u2713 File info detected" + ("" if accepts_ranges else " (no resume support)"))
         else:
+            self._auto_probe_done = False  # Allow manual retry via button
             self.size_label.setText("Unknown (streaming?)")
-            self.probe_status.setText("⚠ Could not detect file size")
+            self.probe_status.setText("\u26a0 Could not detect file size \u2014 click Detect Info to retry")
 
-        # Update save path based on detected name
+        # Update save path
         cat = self.category_combo.currentText()
         self._on_category_changed(cat)
 

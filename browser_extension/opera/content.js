@@ -82,6 +82,53 @@
         return '';
     }
 
+    /**
+     * Returns the cleanest possible URL for the current page's video.
+     *
+     * YouTube   → https://youtu.be/VIDEO_ID  (same as "Copy video URL" menu item)
+     *              strips list=, start_radio=, index= params
+     * Streaming → window.location.href
+     * Other     → actual <video> src
+     */
+    function getCleanVideoURL(videoEl) {
+        const hostname = window.location.hostname;
+
+        // ---- YouTube: extract clean youtu.be short link ----
+        if (hostname.includes('youtube.com') || hostname.includes('youtu.be')) {
+            try {
+                const params = new URLSearchParams(window.location.search);
+                const videoId = params.get('v');
+                if (videoId) {
+                    // Exactly what YouTube "Copy video URL" produces
+                    return `https://youtu.be/${videoId}`;
+                }
+            } catch (err) { console.warn('[WITTGrp] YT URL parse error:', err); }
+            // Fallback: full page URL (e.g. youtu.be/ID?...)
+            return window.location.href;
+        }
+
+        // ---- Other known streaming sites: send page URL ----
+        const STREAMING_SITES = [
+            'vimeo.com', 'dailymotion.com',
+            'twitter.com', 'x.com',
+            'facebook.com', 'instagram.com',
+            'tiktok.com', 'twitch.tv',
+            'xvideos.com', 'xhamster.com',
+        ];
+        if (STREAMING_SITES.some(d => hostname.includes(d))) {
+            return window.location.href;
+        }
+
+        // ---- Regular sites: use actual video src ----
+        if (videoEl) {
+            const src = videoEl.currentSrc || videoEl.src;
+            if (src && !src.startsWith('blob:') && src.startsWith('http')) {
+                return src;
+            }
+        }
+        return window.location.href; // final fallback
+    }
+
     // ── Inject Download Buttons on Video Elements ──────────────────────────
 
     function injectDownloadButtons() {
@@ -93,8 +140,9 @@
             btn.textContent = '⬇ Download';
             btn.style.cssText = `
         position: absolute;
-        top: 8px;
+        top: 50%;
         right: 8px;
+        transform: translateY(-50%);
         z-index: 9999;
         background: #e94560;
         color: white;
@@ -114,24 +162,23 @@
             btn.onclick = (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                let src = video.currentSrc || video.src;
-                if (src && src.startsWith('blob:')) {
-                    src = window.location.href;
-                } else if (!src && window.location.hostname.includes('youtube')) {
-                    src = window.location.href;
-                }
+
+                let src = getCleanVideoURL(video);
+
                 if (src) {
-                    chrome.runtime.sendMessage({
+                    const payload = {
                         action: 'send_to_wittgrp',
                         url: src,
-                        filename: filenameFromURL(src) || 'video.mp4',
+                        filename: '',           // let the app detect it
                         referer: location.href,
-                    });
+                    };
+                    console.log('[WITTGrp Extension] ⬇ Download button clicked!', payload);
+                    chrome.runtime.sendMessage(payload);
                     btn.textContent = '✓ Sent to WITTGrp';
                     btn.style.background = '#22c55e';
                     setTimeout(() => {
                         btn.textContent = '⬇ Download';
-                        btn.style.background = '#e94560';
+                        btn.style.background = '#0A84FF';
                     }, 3000);
                 }
             };
