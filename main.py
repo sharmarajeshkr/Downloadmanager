@@ -59,21 +59,21 @@ def create_splash_screen(app: QApplication) -> QSplashScreen:
     # Title
     painter.setPen(QColor("#ffffff"))
     painter.setFont(QFont("Segoe UI", 32, QFont.Weight.Bold))
-    painter.drawText(110, 95, "WITTGrp")
+    painter.drawText(140, 95, "WITTGrp")
 
     painter.setPen(QColor("#e94560"))
     painter.setFont(QFont("Segoe UI", 13))
-    painter.drawText(110, 120, "WITTGrp Download Manage")
+    painter.drawText(140, 120, "WITTGrp Download Manage")
 
     painter.setPen(QColor("#6080a0"))
     painter.setFont(QFont("Segoe UI", 11))
-    painter.drawText(110, 145, "Multi-threaded • Resumable • Fast")
+    painter.drawText(140, 145, "Multi-threaded • Resumable • Fast")
 
     # Bottom bar
     painter.fillRect(0, 250, 480, 30, QColor("#0f3460"))
     painter.setPen(QColor("#6080a0"))
     painter.setFont(QFont("Segoe UI", 10))
-    painter.drawText(20, 270, "Loading… please wait")
+    #painter.drawText(20, 270, "Loading… please wait")
     painter.drawText(380, 270, "v1.0.0")
 
     painter.end()
@@ -117,7 +117,7 @@ def main():
     port = int(db.get_setting('extension_server_port', '9614'))
 
     # Create main window (need it for the dialog callback)
-    splash.showMessage("  Loading interface…", Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignLeft, QColor("#e94560"))
+    splash.showMessage("  Loading ...", Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignLeft, QColor("#e94560"))
     app.processEvents()
     window = MainWindow(queue_manager=queue, db=db)
 
