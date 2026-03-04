@@ -116,42 +116,58 @@ chrome.tabs.onRemoved.addListener(tabId => {
 //   3. Cancel/erase the browser download immediately
 //   4. Send the URL to WITTGrp Desktop App which shows the download dialog
 
-chrome.downloads.onCreated.addListener(async (downloadItem) => {
-    const url = downloadItem.url || downloadItem.finalUrl || '';
-    if (!url || url.startsWith('blob:') || url.startsWith('data:')) return;
+chrome.downloads.onDeterminingFilename.addListener((downloadItem, suggest) => {
+    (async () => {
+        const url = downloadItem.url || downloadItem.finalUrl || '';
+        if (!url || url.startsWith('blob:') || url.startsWith('data:')) {
+            suggest();
+            return;
+        }
 
-    // Check if interception is enabled
-    const enabled = await isInterceptEnabled();
-    if (!enabled) return;
+        // Check if interception is enabled
+        const enabled = await isInterceptEnabled();
+        if (!enabled) {
+            suggest();
+            return;
+        }
 
-    // Check if this file type should be intercepted
-    const mimeMatch = downloadItem.mime &&
-        VIDEO_MIME_TYPES.some(m => downloadItem.mime.startsWith(m));
-    const extMatch = isInterceptableURL(url);
+        // Check if this file type should be intercepted
+        const mimeMatch = downloadItem.mime &&
+            VIDEO_MIME_TYPES.some(m => downloadItem.mime.startsWith(m));
+        const extMatch = isInterceptableURL(url);
 
-    if (!mimeMatch && !extMatch) return;
+        if (!mimeMatch && !extMatch) {
+            suggest();
+            return;
+        }
 
-    console.log(`[WITTGrp] Intercepting download: ${url} (mime: ${downloadItem.mime})`);
+        console.log(`[WITTGrp] Intercepting download: ${url} (mime: ${downloadItem.mime})`);
 
-    // Cancel and erase the browser's download (prevents "failed" entry in downloads list)
-    try {
-        await chrome.downloads.cancel(downloadItem.id);
-        chrome.downloads.erase({ id: downloadItem.id });
-    } catch (e) {
-        console.warn('[WITTGrp] Cancel failed (may have already finished):', e.message);
-    }
+        // Cancel and erase the browser's download to prevent Save As popup
+        try {
+            await chrome.downloads.cancel(downloadItem.id);
+            chrome.downloads.erase({ id: downloadItem.id });
+        } catch (e) {
+            console.warn('[WITTGrp] Cancel failed (may have already finished):', e.message);
+        }
 
-    // Get the page referer: prefer from download item, then tab tracker
-    const referer = downloadItem.referrer ||
-        downloadItem.initiator ||
-        tabReferers.get(downloadItem.tabId) || '';
+        // Must call suggest to resolve the determining phase
+        suggest();
 
-    // Extract filename
-    const filename = filenameFromURL(url) || downloadItem.filename || '';
+        // Get the page referer: prefer from download item, then tab tracker
+        const referer = downloadItem.referrer ||
+            downloadItem.initiator ||
+            tabReferers.get(downloadItem.tabId) || '';
 
-    // Send to WITTGrp — shows dialog in the desktop app
-    await sendToWITTGrp(url, filename, referer);
+        // Extract filename
+        const filename = filenameFromURL(url) || downloadItem.filename || '';
+
+        // Send to WITTGrp — shows dialog in the desktop app
+        await sendToWITTGrp(url, filename, referer);
+    })();
+    return true; // Required since we call suggest() asynchronously
 });
+
 
 // ── Web Request Interceptor (captures video URLs for popup badge) ─────────
 
