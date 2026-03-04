@@ -20,9 +20,20 @@ If you have already compiled the `.exe` (or received one), no Python installatio
 
 ---
 
-## Installation (From Source)
+## Quick Start (Version v2 Auto-Installer)
 
-To run or build the application from the Python source code:
+The easiest way to get started and run the application on Windows:
+1. Double-click on **`Launch_WITTGrp.bat`**.
+2. The script will automatically check if Python is installed.
+3. If not found, it downloads and silently installs **Python 3.11.8**.
+4. It sets up the required stable dependencies automatically from `requirements.txt`.
+5. The application is seamlessly launched!
+
+---
+
+## Installation (Manual setup from Source)
+
+If you prefer to set up manually, or run from a terminal without the `.bat` script:
 
 ### 1. Prerequisites
 - Python 3.10 or higher.
