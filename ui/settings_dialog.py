@@ -9,7 +9,10 @@ from PyQt6.QtWidgets import (
     QHeaderView, QAbstractItemView, QSlider
 )
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QFont
+from PyQt6.QtGui import QFont, QIcon
+from ui.titlebar import CustomTitleBar
+
+SVG_DIR = os.path.join(os.path.dirname(__file__), "assets", "svg")
 
 
 class SettingsDialog(QDialog):
@@ -19,7 +22,8 @@ class SettingsDialog(QDialog):
         super().__init__(parent)
         self.db = db
         self.setWindowTitle("WITTGrp Settings & Preferences")
-        self.setMinimumSize(700, 550)
+        self.setMinimumSize(680, 540)
+        self.resize(720, 580)
         self.setModal(True)
         self._settings = db.get_all_settings() if db else {}
         self._categories = db.get_categories() if db else []
@@ -27,25 +31,32 @@ class SettingsDialog(QDialog):
         self._load_values()
 
     def _build_ui(self):
+        from PyQt6.QtWidgets import QHBoxLayout
         layout = QVBoxLayout(self)
-        layout.setSpacing(0)
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(10)
+        layout.setContentsMargins(16, 14, 16, 14)
 
         # Header
-        header = QWidget()
-        header.setStyleSheet("background: #0f3460; padding: 16px;")
-        hh = QVBoxLayout(header)
-        title = QLabel("⚙  Settings & Preferences")
-        title.setFont(QFont("Segoe UI", 16, QFont.Weight.Bold))
-        title.setStyleSheet("color: #e94560; background: transparent;")
-        subtitle = QLabel("Configure download preferences, paths, and integrations")
-        subtitle.setStyleSheet("color: #8090b0; background: transparent; font-size: 12px;")
-        hh.addWidget(title)
-        hh.addWidget(subtitle)
-        layout.addWidget(header)
+        hdr = QHBoxLayout()
+        hdr.setSpacing(8)
+        icon_lbl = QLabel("⚙")
+        icon_lbl.setFixedSize(28, 28)
+        icon_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        icon_lbl.setStyleSheet(
+            "background:#0A84FF; color:#fff; border-radius:6px;"
+            "font-size:14px; font-weight:700;"
+        )
+        from PyQt6.QtGui import QFont as _QFont
+        title_lbl = QLabel("Settings & Preferences")
+        title_lbl.setFont(_QFont("Segoe UI", 15, _QFont.Weight.Bold))
+        title_lbl.setStyleSheet("color:#0A84FF;")
+        hdr.addWidget(icon_lbl)
+        hdr.addWidget(title_lbl)
+        hdr.addStretch()
+        layout.addLayout(hdr)
 
         self.tabs = QTabWidget()
-        layout.addWidget(self.tabs)
+        layout.addWidget(self.tabs, 1)
 
         self.tabs.addTab(self._general_tab(), "General")
         self.tabs.addTab(self._connection_tab(), "Connection")
@@ -54,7 +65,6 @@ class SettingsDialog(QDialog):
 
         # Buttons
         btn_row = QHBoxLayout()
-        btn_row.setContentsMargins(16, 12, 16, 16)
         btn_row.addStretch()
         self.cancel_btn = QPushButton("Cancel")
         self.cancel_btn.setObjectName("btn_cancel")

@@ -6,11 +6,14 @@ import threading
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QFileDialog, QSpinBox, QComboBox, QCheckBox,
-    QGroupBox, QFormLayout, QProgressBar
+    QGroupBox, QFormLayout, QProgressBar, QWidget
 )
 from PyQt6.QtCore import Qt, pyqtSignal, QThread, QTimer
 from PyQt6.QtGui import QFont, QIcon
 from core.file_manager import filename_from_url, probe_url, get_category, format_size
+from ui.titlebar import CustomTitleBar
+
+SVG_DIR = os.path.join(os.path.dirname(__file__), "assets", "svg")
 
 
 class ProbeThread(QThread):
@@ -44,7 +47,8 @@ class AddDownloadDialog(QDialog):
         self._original_url = url        # Keep the original YouTube/page URL
 
         self.setWindowTitle("Add New Download")
-        self.setMinimumWidth(620)
+        self.setMinimumSize(580, 520)
+        self.resize(640, 600)
         self.setModal(True)
 
         self._typing_timer = QTimer(self)
@@ -79,19 +83,32 @@ class AddDownloadDialog(QDialog):
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
-        layout.setSpacing(12)
-        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(10)
+        layout.setContentsMargins(16, 12, 16, 14)
 
-        # Header
-        header = QLabel("⬇  Add New Download")
-        header.setObjectName("title_label")
-        header.setFont(QFont("Segoe UI", 16, QFont.Weight.Bold))
-        layout.addWidget(header)
+        # ── Header ──────────────────────────────────────────────
+        hdr = QHBoxLayout()
+        hdr.setSpacing(8)
+        icon_lbl = QLabel("⬇")
+        icon_lbl.setFixedSize(28, 28)
+        icon_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        icon_lbl.setStyleSheet(
+            "background:#0A84FF; color:#fff; border-radius:6px;"
+            "font-size:14px; font-weight:700;"
+        )
+        title_lbl = QLabel("Add New Download")
+        title_lbl.setFont(QFont("Segoe UI", 15, QFont.Weight.Bold))
+        title_lbl.setStyleSheet("color:#0A84FF;")
+        hdr.addWidget(icon_lbl)
+        hdr.addWidget(title_lbl)
+        hdr.addStretch()
+        layout.addLayout(hdr)
 
-        # URL Group
+        # ── Download URL ─────────────────────────────────────────
         url_group = QGroupBox("Download URL")
         url_fl = QFormLayout(url_group)
-        url_fl.setSpacing(10)
+        url_fl.setSpacing(8)
+        url_fl.setContentsMargins(10, 14, 10, 10)
 
         self.url_edit = QLineEdit()
         self.url_edit.setPlaceholderText("https://example.com/file.mp4")
@@ -101,22 +118,25 @@ class AddDownloadDialog(QDialog):
         self.referer_edit.setPlaceholderText("(optional) page where video was found")
         url_fl.addRow("Referer:", self.referer_edit)
 
+        probe_status_row = QHBoxLayout()
         self.probe_btn = QPushButton("Detect Info")
         self.probe_btn.setObjectName("btn_secondary")
         self.probe_btn.setMaximumWidth(130)
-        url_fl.addRow("", self.probe_btn)
-
-        # Probing status
+        probe_status_row.addWidget(self.probe_btn)
+        probe_status_row.addSpacing(8)
         self.probe_status = QLabel("")
         self.probe_status.setObjectName("subtitle_label")
-        url_fl.addRow("", self.probe_status)
+        probe_status_row.addWidget(self.probe_status)
+        probe_status_row.addStretch()
+        url_fl.addRow("", probe_status_row)
 
         layout.addWidget(url_group)
 
-        # File group
+        # ── File Info ────────────────────────────────────────────
         file_group = QGroupBox("File Info")
         file_fl = QFormLayout(file_group)
-        file_fl.setSpacing(10)
+        file_fl.setSpacing(16)
+        file_fl.setContentsMargins(10, 14, 10, 14)
 
         self.filename_edit = QLineEdit()
         self.filename_edit.setPlaceholderText("filename.ext")
@@ -133,21 +153,23 @@ class AddDownloadDialog(QDialog):
         file_fl.addRow("Category:", self.category_combo)
 
         save_row = QHBoxLayout()
+        save_row.setSpacing(6)
         self.save_path_edit = QLineEdit()
         self.save_path_edit.setPlaceholderText("Save location")
         self.browse_btn = QPushButton("Browse…")
         self.browse_btn.setObjectName("btn_secondary")
-        self.browse_btn.setMaximumWidth(90)
+        self.browse_btn.setFixedWidth(80)
         save_row.addWidget(self.save_path_edit)
         save_row.addWidget(self.browse_btn)
         file_fl.addRow("Save to:", save_row)
 
         layout.addWidget(file_group)
 
-        # Options group
+        # ── Download Options ─────────────────────────────────────
         opt_group = QGroupBox("Download Options")
         opt_fl = QFormLayout(opt_group)
-        opt_fl.setSpacing(10)
+        opt_fl.setSpacing(8)
+        opt_fl.setContentsMargins(10, 14, 10, 10)
 
         self.conn_spin = QSpinBox()
         self.conn_spin.setRange(1, 32)
@@ -162,6 +184,7 @@ class AddDownloadDialog(QDialog):
         self.speed_spin.setSuffix(" KB/s")
         self.speed_spin.setEnabled(False)
         speed_row = QHBoxLayout()
+        speed_row.setSpacing(6)
         speed_row.addWidget(self.speed_check)
         speed_row.addWidget(self.speed_spin)
         speed_row.addStretch()
@@ -169,13 +192,14 @@ class AddDownloadDialog(QDialog):
 
         layout.addWidget(opt_group)
 
-        # Buttons
+        # ── Buttons ──────────────────────────────────────────────
+        layout.addStretch(1)
         btn_row = QHBoxLayout()
         btn_row.addStretch()
         self.cancel_btn = QPushButton("Cancel")
         self.cancel_btn.setObjectName("btn_cancel")
         self.cancel_btn.setMinimumWidth(100)
-        self.ok_btn = QPushButton("⬇  Start Download")
+        self.ok_btn = QPushButton("+ Start Download")
         self.ok_btn.setMinimumWidth(150)
         btn_row.addWidget(self.cancel_btn)
         btn_row.addWidget(self.ok_btn)
