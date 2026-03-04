@@ -91,7 +91,7 @@ def create_splash_screen(app: QApplication) -> QSplashScreen:
     painter.fillRect(0, H - 36, W, 36, QColor("#0d0e18"))
     painter.setPen(QColor("#47A1FF"))
     painter.setFont(QFont("Segoe UI", 10, QFont.Weight.Bold))
-    painter.drawText(20, H - 10, "Loading interface…")
+    painter.drawText(20, H - 10, "Loading…")
     painter.setPen(QColor("#3b4252"))
     painter.setFont(QFont("Segoe UI", 10))
     painter.drawText(W - 60, H - 10, "v1.0.0")
@@ -120,23 +120,23 @@ def main():
     app.processEvents()
 
     # Initialize database
-    splash.showMessage("  Initializing database…", Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignLeft, QColor("#e94560"))
+    #splash.showMessage("  Initializing database…", Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignLeft, QColor("#e94560"))
     app.processEvents()
     db = Database()
 
     # Initialize queue manager
-    splash.showMessage("  Starting download engine…", Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignLeft, QColor("#e94560"))
+    #splash.showMessage("  Starting download engine…", Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignLeft, QColor("#e94560"))
     app.processEvents()
     queue = QueueManager(db=db)
     queue.load_from_db()
 
     # Start extension server
-    splash.showMessage("  Starting browser integration server…", Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignLeft, QColor("#e94560"))
+    #splash.showMessage("  Starting browser integration server…", Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignLeft, QColor("#e94560"))
     app.processEvents()
     port = int(db.get_setting('extension_server_port', '9614'))
 
     # Create main window (need it for the dialog callback)
-    splash.showMessage("  Loading interface…", Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignLeft, QColor("#e94560"))
+    #splash.showMessage("  Loading interface…", Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignLeft, QColor("#e94560"))
     app.processEvents()
     window = MainWindow(queue_manager=queue, db=db)
 
