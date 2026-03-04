@@ -6,7 +6,7 @@ import time
 import threading
 import logging
 from typing import Optional, Dict, Callable, List
-from .downloader import MultiThreadedDownloader, DownloadStatus
+from .downloader_v2 import DynamicDownloader, DownloadStatus
 from .database import Database
 from .file_manager import get_category, get_save_path, filename_from_url, probe_url
 
@@ -40,7 +40,7 @@ class DownloadTask:
         self.started_at = 0.0
         self.completed_at = 0.0
 
-        self._downloader: Optional[MultiThreadedDownloader] = None
+        self._downloader: Optional[DynamicDownloader] = None
         self._thread: Optional[threading.Thread] = None
 
 
@@ -197,7 +197,7 @@ class QueueManager:
                 })
             self._notify(task)
 
-        dl = MultiThreadedDownloader(
+        dl = DynamicDownloader(
             task_id=task.id,
             url=task.url,
             filepath=task.filepath,
