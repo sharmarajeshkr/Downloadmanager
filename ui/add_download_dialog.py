@@ -65,6 +65,11 @@ class AddDownloadDialog(QDialog):
         if filename:
             self.filename_edit.setText(filename)
             self._auto_probe_done = True  # filename supplied — no need to probe
+            # Explicitly resolve the category for the pre-filled filename
+            cat = get_category(filename, self.categories)
+            idx = self.category_combo.findText(cat)
+            if idx >= 0:
+                self.category_combo.setCurrentIndex(idx)
         if referer:
             self.referer_edit.setText(referer)
         self.url_edit.blockSignals(False)
