@@ -252,17 +252,35 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         return true;
     }
 
-    if (msg.action === 'get_videos' && sender.tab) {
-        const videos = capturedVideos.get(sender.tab.id) || [];
+    if (msg.action === 'get_videos') {
+        const tabId = msg.tabId || (sender.tab ? sender.tab.id : null);
+        const videos = tabId ? (capturedVideos.get(tabId) || []) : [];
         sendResponse({ videos });
         return true;
     }
 
-    if (msg.action === 'videos_found') {
+    if (msg.action === 'videos_found' && sender.tab) {
         const videos = msg.videos || [];
-        for (const v of videos) {
-            sendToWITTGrp(v.url, v.filename, sender.tab?.url || '');
+
+        if (!capturedVideos.has(sender.tab.id)) {
+            capturedVideos.set(sender.tab.id, []);
         }
+        const list = capturedVideos.get(sender.tab.id);
+
+        for (const v of videos) {
+            if (!list.find(existing => existing.url === v.url)) {
+                list.push({
+                    url: v.url,
+                    filename: v.filename || 'video.mp4',
+                    size: 0,
+                    mimeType: v.type || 'video',
+                    referer: sender.tab.url || ''
+                });
+            }
+        }
+
+        chrome.action.setBadgeText({ text: String(list.length), tabId: sender.tab.id });
+        chrome.action.setBadgeBackgroundColor({ color: '#e94560', tabId: sender.tab.id });
     }
 
     // Settings read/write from popup

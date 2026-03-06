@@ -335,10 +335,10 @@
     <button class="btn-add" id="add-btn">⬇ Send to WITTGrp</button>
   </div>
 
-  <div class="videos-section">
+  <!-- <div class="videos-section">
     <div class="section-title">
       <span>Detected Media <span class="badge" id="video-count">0</span></span>
-      <span id="dl-all-btn" style="color:#e94560;cursor:pointer;font-size:11px;" onclick="downloadAll()">Download
+      <span id="dl-all-btn" style="color:#e94560;cursor:pointer;font-size:11px;">Download
         All</span>
     </div>
     <div class="video-list" id="video-list">
@@ -347,7 +347,7 @@
         <div>No media detected on this page.<br>Browse a video page and media will appear here.</div>
       </div>
     </div>
-  </div>
+  </div> -->
 
   <!-- Intercept toggle -->
   <div class="intercept-row">
@@ -364,140 +364,10 @@
   <div class="footer">
     <span class="footer-status"><span class="status-dot" id="status-dot"></span><span id="status-text">Checking
         WITTGrp…</span></span>
-    <button class="open-idm" onclick="openIDM()">Open WITTGrp App →</button>
+    <button class="open-idm">Open WITTGrp App →</button>
   </div>
 
-  <script>
-    const WITTGRP_URL = 'http://127.0.0.1:9614';
-    let detectedVideos = [];
-
-    function formatSize(bytes) {
-      if (!bytes) return '';
-      const units = ['B', 'KB', 'MB', 'GB'];
-      let i = 0;
-      while (bytes >= 1024 && i < units.length - 1) { bytes /= 1024; i++; }
-      return bytes.toFixed(1) + ' ' + units[i];
-    }
-
-    // Check IDM connection
-    async function checkIDM() {
-      const dot = document.getElementById('status-dot');
-      const text = document.getElementById('status-text');
-      try {
-        const resp = await fetch(WITTGRP_URL + '/ping', {
-          method: 'POST', body: '{}',
-          headers: { 'Content-Type': 'application/json' }
-        });
-        if (resp.ok) {
-          dot.className = 'status-dot';
-          text.textContent = 'WITTGrp Connected';
-        } else throw new Error();
-      } catch {
-        dot.className = 'status-dot offline';
-        text.textContent = 'WITTGrp Not Running';
-      }
-    }
-
-    // Load videos detected by background script
-    function loadVideos() {
-      chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
-        if (!tabs[0]) return;
-        chrome.runtime.sendMessage({ action: 'get_videos', tabId: tabs[0].id }, resp => {
-          detectedVideos = resp?.videos || [];
-          renderVideos();
-        });
-      });
-    }
-
-    function renderVideos() {
-      const container = document.getElementById('video-list');
-      document.getElementById('video-count').textContent = detectedVideos.length;
-      if (!detectedVideos.length) {
-        container.innerHTML = `<div class="empty-state">
-      <span class="empty-icon">🎬</span>
-      <div>No media detected on this page.<br>Browse a video page and media will appear here.</div>
-    </div>`;
-        return;
-      }
-      container.innerHTML = detectedVideos.map((v, i) => `
-    <div class="video-item" id="vi-${i}">
-      <button class="btn-dl" onclick="downloadVideo(${i})">⬇ WITTGrp</button>
-      <div class="video-name">${v.filename || 'video'}</div>
-      <div class="video-meta">
-        <span class="video-type">${v.mimeType || v.type || 'video'}</span>
-        ${v.size ? '<span>' + formatSize(v.size) + '</span>' : ''}
-      </div>
-    </div>
-  `).join('');
-    }
-
-    function downloadVideo(index) {
-      const v = detectedVideos[index];
-      if (!v) return;
-      chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
-        chrome.runtime.sendMessage({
-          action: 'send_to_wittgrp', url: v.url,
-          filename: v.filename, referer: tabs[0]?.url || '',
-        }, () => {
-          const item = document.getElementById(`vi-${index}`);
-          if (item) { item.style.borderColor = '#22c55e'; item.style.background = '#0d2018'; }
-        });
-      });
-    }
-
-    function downloadAll() {
-      detectedVideos.forEach((_, i) => downloadVideo(i));
-    }
-
-    document.getElementById('add-btn').onclick = () => {
-      const url = document.getElementById('url-input').value.trim();
-      if (!url) return;
-      chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
-        chrome.runtime.sendMessage({
-          action: 'send_to_wittgrp', url, filename: '',
-          referer: tabs[0]?.url || '',
-        }, () => {
-          document.getElementById('url-input').value = '';
-          document.getElementById('add-btn').textContent = '✓ Sent!';
-          setTimeout(() => document.getElementById('add-btn').textContent = '⬇  Send to WITTGrp', 2000);
-        });
-      });
-    };
-
-    function openIDM() {
-      // Can't open native apps from extension, notify user
-      alert('Please open IDM from your desktop or taskbar.');
-    }
-
-    // Auto-paste from clipboard on open
-    navigator.clipboard.readText().then(text => {
-      if (text && (text.startsWith('http://') || text.startsWith('https://'))) {
-        document.getElementById('url-input').value = text;
-      }
-    }).catch(() => { });
-
-    // ── Intercept toggle ──────────────────────────────────────────────
-    const interceptToggle = document.getElementById('intercept-toggle');
-
-    // Load saved state
-    chrome.runtime.sendMessage({ action: 'get_settings' }, result => {
-      if (result && typeof result.interceptEnabled !== 'undefined') {
-        interceptToggle.checked = result.interceptEnabled;
-      }
-    });
-
-    // Save on change
-    interceptToggle.addEventListener('change', () => {
-      chrome.runtime.sendMessage({
-        action: 'set_settings',
-        settings: { interceptEnabled: interceptToggle.checked }
-      });
-    });
-
-    checkIDM();
-    loadVideos();
-    setInterval(loadVideos, 3000);
-  </script>
+  <script src="popup.js"></script>
 </body>
 
 </html>
