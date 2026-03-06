@@ -75,7 +75,8 @@ async function sendToWITTGrp(url, filename, referer, extraHeaders = {}) {
             body: JSON.stringify({ url, filename, referer, headers: extraHeaders }),
         });
         if (resp.ok) {
-            showNotification('Download sent to WITTGrp', filename || url.substring(0, 60));
+            // Disabled success notification so the desktop app can show its own sleek UI
+            // showNotification('Download sent to WITTGrp', filename || url.substring(0, 60));
             return true;
         }
     } catch (e) {

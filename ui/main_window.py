@@ -25,6 +25,7 @@ from ui.add_download_dialog import AddDownloadDialog
 from ui.settings_dialog import SettingsDialog
 from ui.scheduler_dialog import SchedulerDialog
 from ui.site_grabber_dialog import SiteGrabberDialog
+from ui.notification_widget import NotificationManager
 from ui.titlebar import CustomTitleBar
 
 SVG_DIR = os.path.join(os.path.dirname(__file__), "assets", "svg")
@@ -388,6 +389,7 @@ class MainWindow(QMainWindow):
         self.add_url_signal.connect(self._emit_add_dialog)
         # Register callback with queue manager
         self.queue_manager.on_task_update = self._on_task_update
+        self.queue_manager.on_task_completed = self._on_task_completed
 
         # Refresh timer for speed/ETA
         self.refresh_timer = QTimer()
@@ -403,6 +405,19 @@ class MainWindow(QMainWindow):
     def _on_task_update(self, task):
         """Called from any thread — emits signal to update UI in main thread."""
         self.task_update_signal.emit(task)
+
+    def _on_task_completed(self, task):
+        """Called when a task completely finishes downloading and merging."""
+        # Ensure we run in main thread if called directly, but notify() creates widgets 
+        # so it must be main thread. For safety we should really use a signal.
+        def _notify():
+            NotificationManager.get().notify(
+                title="Download Complete",
+                message=task.filename,
+                action="success"
+            )
+        # Using a QTimer.singleShot(0) safely queues onto main thread event loop
+        QTimer.singleShot(0, _notify)
 
     def _add_task_row(self, task):
         row = self.table.rowCount()
@@ -577,10 +592,10 @@ class MainWindow(QMainWindow):
             size=params.get('size', 0),
             skip_probe=params.get('skip_probe', False),
         )
-        self.tray_icon.showMessage(
-            "WITTGrp - Download Started",
-            f"⬇ {params.get('filename', 'File')}",
-            QSystemTrayIcon.MessageIcon.Information, 3000
+        NotificationManager.get().notify(
+            title="Download Added", 
+            message=params.get('filename', 'File has been added to the queue.'),
+            action="info"
         )
 
     def _show_settings(self):
