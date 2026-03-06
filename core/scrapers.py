@@ -124,8 +124,8 @@ class YouTubeScraper:
         return urllib.parse.urlunparse(parsed._replace(query=new_query))
 
     @staticmethod
-    def _build_ydl_opts(fmt: str) -> dict:
-        return {
+    def _build_ydl_opts(fmt: str, browser: Optional[str] = None) -> dict:
+        opts = {
             "format": fmt,
             "noplaylist": True,
             "quiet": True,
@@ -140,6 +140,9 @@ class YouTubeScraper:
                 "Accept": "text/html,application/xhtml+xml,*/*;q=0.8",
             },
         }
+        if browser:
+            opts["cookiesfrombrowser"] = (browser,)
+        return opts
 
     def probe(self, url: str, headers: dict = None) -> Optional[ProbeResult]:
         try:
@@ -158,56 +161,69 @@ class YouTubeScraper:
             "bestvideo[ext=mp4]+bestaudio", # Tier 3: separate video+audio (biggest)
         ]
 
-        for fmt in FORMAT_CHAIN:
-            try:
-                opts = self._build_ydl_opts(fmt)
-                with yt_dlp.YoutubeDL(opts) as ydl:
-                    info = ydl.extract_info(clean_url, download=False)
+        browsers_to_try = [None, "edge", "chrome", "firefox", "brave", "opera", "safari"]
 
-                # Pull title from info dict first
-                title = (
-                    info.get("title")
-                    or info.get("fulltitle")
-                    or info.get("id")
-                    or "youtube_video"
-                )
-                ext = info.get("ext") or "mp4"
+        for browser in browsers_to_try:
+            sign_in_required = False
+            for fmt in FORMAT_CHAIN:
+                try:
+                    opts = self._build_ydl_opts(fmt, browser=browser)
+                    with yt_dlp.YoutubeDL(opts) as ydl:
+                        info = ydl.extract_info(clean_url, download=False)
 
-                # Pick the best downloadable URL
-                final_url = info.get("url")  # present for single-stream formats
-                if not final_url:
-                    # Merged / requested_formats path
-                    fmts = info.get("requested_formats") or info.get("formats") or []
-                    # Prefer the video format (largest stream)
-                    video_fmts = [f for f in fmts if f.get("vcodec", "none") != "none"]
-                    if video_fmts:
-                        final_url = video_fmts[0].get("url")
-                        ext = video_fmts[0].get("ext") or ext
-
-                if not final_url:
-                    logger.warning(f"[YouTube] Format {fmt!r}: no URL in info — trying next")
-                    continue
-
-                # Aggregate file size
-                size = (
-                    info.get("filesize")
-                    or info.get("filesize_approx")
-                    or sum(
-                        (f.get("filesize") or f.get("filesize_approx") or 0)
-                        for f in info.get("requested_formats") or []
+                    # Pull title from info dict first
+                    title = (
+                        info.get("title")
+                        or info.get("fulltitle")
+                        or info.get("id")
+                        or "youtube_video"
                     )
-                    or 0
-                )
+                    ext = info.get("ext") or "mp4"
 
-                cd = _make_content_disposition(title, ext)
-                logger.info(
-                    f"[YouTube] OK (fmt={fmt!r}) — title={title!r} size={size} ext={ext}"
-                )
-                return final_url, int(size), True, cd
+                    # Pick the best downloadable URL
+                    final_url = info.get("url")  # present for single-stream formats
+                    if not final_url:
+                        # Merged / requested_formats path
+                        fmts = info.get("requested_formats") or info.get("formats") or []
+                        # Prefer the video format (largest stream)
+                        video_fmts = [f for f in fmts if f.get("vcodec", "none") != "none"]
+                        if video_fmts:
+                            final_url = video_fmts[0].get("url")
+                            ext = video_fmts[0].get("ext") or ext
 
-            except Exception as e:
-                logger.warning(f"[YouTube] Format {fmt!r} failed: {e} — trying next")
-                continue
+                    if not final_url:
+                        logger.warning(f"[YouTube] Format {fmt!r}: no URL in info — trying next")
+                        continue
+
+                    # Aggregate file size
+                    size = (
+                        info.get("filesize")
+                        or info.get("filesize_approx")
+                        or sum(
+                            (f.get("filesize") or f.get("filesize_approx") or 0)
+                            for f in info.get("requested_formats") or []
+                        )
+                        or 0
+                    )
+
+                    cd = _make_content_disposition(title, ext)
+                    logger.info(
+                        f"[YouTube] OK (fmt={fmt!r} browser={browser}) — title={title!r} size={size} ext={ext}"
+                    )
+                    return final_url, int(size), True, cd
+
+                except Exception as e:
+                    err_msg = str(e).lower()
+                    logger.warning(f"[YouTube] Format {fmt!r} failed (browser={browser}): {e}")
+                    # If youtube demands a sign in because of bot detection or age restriction
+                    if "sign in" in err_msg or "bot" in err_msg or "cookies" in err_msg:
+                        sign_in_required = True
+                        break # Stop trying other formats for this browser, try next browser
+                    continue
+            
+            # If no sign-in or bot error occurred, no need to fallback to other browsers
+            if not sign_in_required:
+                break
 
         logger.error(f"[YouTube] All format tiers exhausted for {clean_url}")
         return None
