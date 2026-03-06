@@ -108,6 +108,9 @@ class SettingsDialog(QDialog):
         self.show_add_dialog_check = QCheckBox("Show 'Add New Download' dialog")
         dfl.addRow("", self.show_add_dialog_check)
 
+        self.auto_start_check = QCheckBox("Automatically start download after detecting info")
+        dfl.addRow("", self.auto_start_check)
+
         self.start_on_boot_check = QCheckBox("Start WITTGrp with Windows")
         dfl.addRow("", self.start_on_boot_check)
         layout.addWidget(dl_group)
@@ -219,6 +222,7 @@ class SettingsDialog(QDialog):
         self.default_path_edit.setText(s.get('save_path', r'D:\idm\downloads'))
         self.max_concurrent_spin.setValue(int(s.get('max_concurrent', 3)))
         self.show_add_dialog_check.setChecked(s.get('show_add_dialog', 'true') == 'true')
+        self.auto_start_check.setChecked(s.get('auto_start_download', 'false') == 'true')
         self.default_connections_spin.setValue(int(s.get('default_connections', 8)))
         self.clipboard_check.setChecked(s.get('monitor_clipboard', 'true') == 'true')
         self.tray_check.setChecked(s.get('tray_icon', 'true') == 'true')
@@ -258,6 +262,7 @@ class SettingsDialog(QDialog):
             'save_path': self.default_path_edit.text(),
             'max_concurrent': str(self.max_concurrent_spin.value()),
             'show_add_dialog': 'true' if self.show_add_dialog_check.isChecked() else 'false',
+            'auto_start_download': 'true' if self.auto_start_check.isChecked() else 'false',
             'default_connections': str(self.default_connections_spin.value()),
             'monitor_clipboard': 'true' if self.clipboard_check.isChecked() else 'false',
             'tray_icon': 'true' if self.tray_check.isChecked() else 'false',

@@ -306,6 +306,9 @@ class AddDownloadDialog(QDialog):
             self._probed_size = size
             self.size_label.setText(format_size(size) + (" (resumable)" if accepts_ranges else ""))
             self.probe_status.setText("\u2713 File info detected" + ("" if accepts_ranges else " (no resume support)"))
+            
+            if self.db and self.db.get_setting("auto_start_download", "false") == "true":
+                self._accept()
         else:
             self._auto_probe_done = False  # Allow manual retry via button
             self.size_label.setText("Unknown (streaming?)")
