@@ -227,7 +227,7 @@ class AddDownloadDialog(QDialog):
 
         # Only auto-fill filename from URL if it has a proper extension (e.g. file.mp4)
         if text and not self.filename_edit.text():
-            name = filename_from_url(text)
+            name = filename_from_url(text, referer=self.referer_edit.text().strip())
             if name and '.' in name:
                 self.filename_edit.blockSignals(True)
                 self.filename_edit.setText(name)
@@ -295,7 +295,7 @@ class AddDownloadDialog(QDialog):
             self.url_edit.blockSignals(False)
 
         # Extract filename: use _original_url for YouTube-style page URLs
-        name = filename_from_url(self._original_url or final_url, content_disposition)
+        name = filename_from_url(self._original_url or final_url, content_disposition, referer=self.referer_edit.text().strip())
         if name and name != self.filename_edit.text():
             self.filename_edit.blockSignals(True)
             self.filename_edit.setText(name)
@@ -323,7 +323,7 @@ class AddDownloadDialog(QDialog):
         if not url:
             self.url_edit.setFocus()
             return
-        filename = self.filename_edit.text().strip() or filename_from_url(url)
+        filename = self.filename_edit.text().strip() or filename_from_url(url, referer=self.referer_edit.text().strip())
         save_path = self.save_path_edit.text().strip()
         if not save_path:
             cat = self.category_combo.currentText()

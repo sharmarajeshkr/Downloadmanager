@@ -303,7 +303,7 @@ class XVideosScraper:
 
             # -- Extract real title from <title> tag
             title_match = re.search(r"<title>([^<]+)</title>", html, re.IGNORECASE)
-            page_title = "xvideos_video"
+            page_title = ""
             if title_match:
                 raw_title = title_match.group(1).strip()
                 # Remove trailing " - XVIDEOS.COM" suffix
@@ -337,7 +337,10 @@ class XVideosScraper:
             if headers is not None:
                 headers["Referer"] = url
 
-            cd = _make_content_disposition(page_title, "mp4")
+            if page_title:
+                cd = _make_content_disposition(page_title, "mp4")
+            else:
+                cd = ""
             logger.info(f"[XVideos] OK — title={page_title!r} size={size}")
             return best_vid, size, True, cd
 
@@ -373,7 +376,7 @@ class XHamsterScraper:
 
             # -- Extract title
             title_match = re.search(r"<title>([^<]+)</title>", html, re.IGNORECASE)
-            page_title = "xhamster_video"
+            page_title = ""
             if title_match:
                 raw = title_match.group(1).strip()
                 page_title = re.sub(r"\s*[-|]\s*xHamster.*$", "", raw, flags=re.IGNORECASE).strip()
@@ -402,7 +405,10 @@ class XHamsterScraper:
             if headers is not None:
                 headers["Referer"] = url
 
-            cd = _make_content_disposition(page_title, "mp4")
+            if page_title:
+                cd = _make_content_disposition(page_title, "mp4")
+            else:
+                cd = ""
             logger.info(f"[xHamster] OK — title={page_title!r} size={size}")
             return best_vid, size, True, cd
 

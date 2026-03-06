@@ -23,6 +23,8 @@ from core.downloader import DownloadStatus
 from core.file_manager import format_size, format_speed, format_eta
 from ui.add_download_dialog import AddDownloadDialog
 from ui.settings_dialog import SettingsDialog
+from ui.scheduler_dialog import SchedulerDialog
+from ui.site_grabber_dialog import SiteGrabberDialog
 from ui.titlebar import CustomTitleBar
 
 SVG_DIR = os.path.join(os.path.dirname(__file__), "assets", "svg")
@@ -176,6 +178,12 @@ class MainWindow(QMainWindow):
         a8.triggered.connect(self._show_settings)
         a8.setShortcut("Ctrl+,")
         tools_menu.addSeparator()
+        a_schedule = tools_menu.addAction("Scheduler…")
+        a_schedule.triggered.connect(self._show_scheduler)
+        tools_menu.addSeparator()
+        a_sitegrab = tools_menu.addAction("Site Grabber…")
+        a_sitegrab.triggered.connect(self._show_site_grabber)
+        tools_menu.addSeparator()
         a9 = tools_menu.addAction("Browser Extension Guide…")
         a9.triggered.connect(self._show_extension_guide)
 
@@ -210,6 +218,14 @@ class MainWindow(QMainWindow):
         tb.addAction(stop_action)
 
         tb.addSeparator()
+
+        scheduler_action = QAction(QIcon(os.path.join(SVG_DIR, 'menu.svg')), "Scheduler", self)
+        scheduler_action.triggered.connect(self._show_scheduler)
+        tb.addAction(scheduler_action)
+
+        grab_action = QAction(QIcon(os.path.join(SVG_DIR, 'menu.svg')), "Site Grabber", self)
+        grab_action.triggered.connect(self._show_site_grabber)
+        tb.addAction(grab_action)
 
         settings_action = QAction(QIcon(os.path.join(SVG_DIR, 'settings.svg')), "Settings", self)
         settings_action.triggered.connect(self._show_settings)
@@ -570,6 +586,14 @@ class MainWindow(QMainWindow):
     def _show_settings(self):
         dlg = SettingsDialog(parent=self, db=self.db)
         dlg.exec()
+
+    def _show_scheduler(self):
+        dlg = SchedulerDialog(parent=self, db=self.db)
+        dlg.exec()
+
+    def _show_site_grabber(self):
+        dlg = SiteGrabberDialog(parent=self, queue_manager=self.queue_manager)
+        dlg.show()
 
     def _show_extension_guide(self):
         ext_path = os.path.abspath("browser_extension/chrome")

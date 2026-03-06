@@ -40,6 +40,37 @@ class DownloadState:
     completed: bool = False
     timestamp: float = field(default_factory=time.time)
 
+class TokenBucket:
+    def __init__(self, rate_kbps: float):
+        self.rate = rate_kbps * 1024
+        self.tokens = self.rate
+        self.last_update = time.time()
+        self.lock = threading.Lock()
+
+    def set_rate(self, rate_kbps: float):
+        with self.lock:
+            self.rate = rate_kbps * 1024
+            self.tokens = min(self.tokens, self.rate)
+
+    def consume(self, amount_bytes: int):
+        if self.rate <= 0:
+            return
+        while True:
+            with self.lock:
+                now = time.time()
+                elapsed = now - self.last_update
+                self.tokens += elapsed * self.rate
+                if self.tokens > self.rate:
+                    self.tokens = self.rate
+                self.last_update = now
+
+                if self.tokens >= amount_bytes:
+                    self.tokens -= amount_bytes
+                    return
+                # Calculate sleep time outside lock to prevent blocking other threads
+                wait_time = (amount_bytes - self.tokens) / self.rate
+            time.sleep(max(0.001, min(wait_time, 0.1)))
+
 class DynamicDownloader:
     """
     V2 Downloader implementing Intelligent Dynamic File Segmentation.
@@ -57,7 +88,8 @@ class DynamicDownloader:
                  proxy: Optional[str] = None,
                  on_progress: Optional[Callable] = None,
                  on_status_change: Optional[Callable] = None,
-                 speed_limit_bytes: int = 0):
+                 speed_limit_bytes: int = 0,
+                 token_bucket: Optional[TokenBucket] = None):
         self.task_id = task_id
         self.url = url
         self.filepath = filepath
@@ -67,6 +99,7 @@ class DynamicDownloader:
         self.on_progress = on_progress          
         self.on_status_change = on_status_change 
         self.speed_limit_bytes = speed_limit_bytes
+        self.token_bucket = token_bucket
 
         self.status = DownloadStatus.QUEUED
         self.total_size = 0
@@ -277,13 +310,18 @@ class DynamicDownloader:
 
                         # Increase disk buffering to 2MB to reduce OS write syscalls
                         with open(chunk_file, mode, buffering=2 * 1024 * 1024) as f:
-                            # Use a larger network chunk size to reduce loop overhead
-                            for data in resp.iter_content(chunk_size=1024 * 1024):
+                            # Use a 64KB network chunk size for smoother rate limiting (was 1MB)
+                            for data in resp.iter_content(chunk_size=64 * 1024):
                                 if self._cancel_event.is_set() or self._pause_event.is_set():
                                     break
                                 
                                 if data:
                                     n = len(data)
+                                    
+                                    # Rate limit: Block this thread if we exceed global allowed bandwidth
+                                    if self.token_bucket:
+                                        self.token_bucket.consume(n)
+                                        
                                     # Fast unlocked check against end boundary
                                     if chunk.start + chunk.downloaded + n > chunk.end + 1:
                                         # We might be overshooting. Need to lock to carefully truncate.

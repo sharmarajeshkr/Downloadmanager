@@ -60,28 +60,98 @@ def ensure_unique(filepath: str) -> str:
     return f"{root} ({counter}){ext}"
 
 
-def filename_from_url(url: str, content_disposition: Optional[str] = None) -> str:
-    """Extract filename from URL or Content-Disposition header."""
+def _is_generic_name(name: str) -> bool:
+    """Check if a filename is too generic (e.g., 480p.mp4, video.mp4, index.html)."""
+    if not name:
+        return True
+    name_lower = name.lower()
+    base = os.path.splitext(name_lower)[0]
+    
+    # Common generic bases
+    if base in ('download', 'video', 'videoplayback', 'playlist', 'media', 'file', 'index', 'master', 'stream'):
+        return True
+        
+    # Resolution patterns like 480p, 720p, 1080p, 480p.h264
+    if re.search(r'^\d{3,4}p(\.h264|\.x264|\.avc)?$', base):
+        return True
+        
+    # Extremely short names or long hashes (MD5, UUIDs)
+    if len(base) <= 4:
+        return True
+    
+    # Check for long hashes (no spaces, no hyphens, or looks like UUID)
+    if len(base) >= 32:
+        # If it contains hyphens and words, it's likely a title slug, not a hash
+        if '-' in base and not re.match(r'^[0-9a-fA-F-]+$', base):
+            pass # Keep slugified titles
+        elif re.match(r'^[0-9a-fA-F]{32,}$', base): # MD5/SHA
+            return True
+            
+    return False
+
+def filename_from_url(url: str, content_disposition: Optional[str] = None, referer: str = None) -> str:
+    """Extract filename from URL, Content-Disposition header, or Referer."""
     # Try Content-Disposition first
     if content_disposition:
-        # RFC 5987 encoded filename*=UTF-8''...
         match = re.search(r"filename\*=UTF-8''([^;\s]+)", content_disposition)
         if match:
             return urllib.parse.unquote(match.group(1))
-        # Regular filename=
         match = re.search(r'filename=["\']?([^"\';\r\n]+)["\']?', content_disposition)
         if match:
             return match.group(1).strip().strip('"\'')
 
-    # From URL path
+    # Parse URL path
     parsed = urllib.parse.urlparse(url)
     path = urllib.parse.unquote(parsed.path)
-    name = os.path.basename(path.rstrip('/'))
-    if name and '.' in name:
-        return sanitize_filename(name)
+    url_name = os.path.basename(path.rstrip('/'))
+    
+    ext = os.path.splitext(url_name)[1] if '.' in url_name else ''
+    url_is_generic = _is_generic_name(url_name)
+    
+    # Try to extract a better filename from the Referer URL
+    if referer:
+        ref_parsed = urllib.parse.urlparse(referer)
+        ref_path = urllib.parse.unquote(ref_parsed.path)
+        ref_name = os.path.basename(ref_path.rstrip('/'))
+        
+        # Avoid generic page names
+        if ref_name and not ref_name.endswith(('.html', '.htm', '.php', '.asp', '.aspx')):
+            # Strip common tube site IDs at the end (e.g. ...-xh2Aj6r)
+            ref_name = re.sub(r'-[a-zA-Z0-9]{5,15}$', '', ref_name)
+            
+            # If the referer has a good name, prioritize it over a generic URL name
+            if not _is_generic_name(ref_name):
+                # If referer lacks extension, append the one from the URL (or a default)
+                if '.' not in ref_name:
+                    ref_name += (ext if ext else '.mp4')
+                    
+                sanitized = sanitize_filename(ref_name)
+                if sanitized:
+                    return sanitized
 
-    # No filename could be determined — let the caller decide
-    return ""
+    # If the URL path has a good filename with an extension, use it
+    if url_name and '.' in url_name and not url_is_generic:
+        return sanitize_filename(url_name)
+        
+    # If standard URL path is bad, try the URL query parameters
+    query_params = urllib.parse.parse_qs(parsed.query)
+    for k, v in query_params.items():
+        if any(v_item and '.' in v_item for v_item in v):
+            for v_item in v:
+                if '.' in v_item and not _is_generic_name(v_item):
+                    return sanitize_filename(v_item)
+
+    # General fallback: return generic URL name if it has an extension, else sanitized fallback
+    if url_name and '.' in url_name:
+        return sanitize_filename(url_name)
+        
+    fallback_name = url_name if url_name else parsed.netloc
+    if fallback_name:
+        sanitized = sanitize_filename(fallback_name)
+        if sanitized:
+            return sanitized
+
+    return "download"
 
 
 def sanitize_filename(name: str) -> str:

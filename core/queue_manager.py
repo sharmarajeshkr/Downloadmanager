@@ -6,7 +6,7 @@ import time
 import threading
 import logging
 from typing import Optional, Dict, Callable, List
-from .downloader_v2 import DynamicDownloader, DownloadStatus
+from .downloader_v2 import DynamicDownloader, DownloadStatus, TokenBucket
 from .database import Database
 from .file_manager import get_category, get_save_path, filename_from_url, probe_url
 
@@ -53,8 +53,23 @@ class QueueManager:
         self.on_task_update = on_task_update  # fn(task: DownloadTask)
         self._tasks: Dict[str, DownloadTask] = {}
         self._lock = threading.RLock()
+        
+        self.global_token_bucket = TokenBucket(0)
+        self._update_speed_limit()
+        
         self._scheduler_thread = threading.Thread(target=self._scheduler_loop, daemon=True)
         self._scheduler_thread.start()
+
+    def _update_speed_limit(self):
+        enabled = self.db.get_setting('speed_limit_enabled', 'false') == 'true'
+        if enabled:
+            try:
+                rate_kbps = float(self.db.get_setting('global_speed_limit', '10240'))
+                self.global_token_bucket.set_rate(rate_kbps)
+            except ValueError:
+                self.global_token_bucket.set_rate(0)
+        else:
+            self.global_token_bucket.set_rate(0)
 
     @property
     def max_concurrent(self) -> int:
@@ -108,13 +123,31 @@ class QueueManager:
         final_url = url
         if not skip_probe:
             final_url, probed_size, _, cd = probe_url(url, {'Referer': referer} if referer else None)
-            fname = filename or filename_from_url(final_url, cd)
+            fname = filename or filename_from_url(final_url, cd, referer=referer)
             size = size or probed_size
         else:
-            fname = filename
+            fname = filename or filename_from_url(url, referer=referer)
 
         category = get_category(fname, categories)
         filepath = save_path or get_save_path(fname, category, categories)
+
+        import os
+        import re
+        
+        def is_filepath_in_queue(fp):
+            with self._lock:
+                return any(t.filepath == fp for t in self._tasks.values())
+
+        root, ext = os.path.splitext(filepath)
+        # In case get_save_path already added " (1)", we want to group them gracefully
+        base_root = re.sub(r' \(\d+\)$', '', root)
+        
+        counter = 1
+        while os.path.exists(filepath) or is_filepath_in_queue(filepath):
+            filepath = f"{base_root} ({counter}){ext}"
+            counter += 1
+            
+        fname = os.path.basename(filepath)
 
         task = DownloadTask(
             task_id=task_id,
@@ -207,6 +240,7 @@ class QueueManager:
             on_progress=on_progress,
             on_status_change=on_status,
             speed_limit_bytes=task.speed_limit,
+            token_bucket=self.global_token_bucket,
         )
         task._downloader = dl
         task.status = DownloadStatus.DOWNLOADING
@@ -291,11 +325,70 @@ class QueueManager:
             except Exception:
                 pass
 
+    def _check_schedule(self):
+        """Check if we are within the user's allowed schedule."""
+        enabled = self.db.get_setting("schedule_enabled", "false") == "true"
+        if not enabled:
+            return True, False
+            
+        start_str = self.db.get_setting("schedule_start", "00:00")
+        stop_str = self.db.get_setting("schedule_stop", "06:00")
+        
+        try:
+            now = time.localtime()
+            current_minutes = now.tm_hour * 60 + now.tm_min
+            
+            start_parts = [int(p) for p in start_str.split(':')]
+            start_minutes = start_parts[0] * 60 + start_parts[1]
+            
+            stop_parts = [int(p) for p in stop_str.split(':')]
+            stop_minutes = stop_parts[0] * 60 + stop_parts[1]
+            
+            # Case 1: Start < Stop (e.g. 08:00 to 17:00)
+            if start_minutes < stop_minutes:
+                in_window = start_minutes <= current_minutes < stop_minutes
+                just_ended = current_minutes == stop_minutes
+            # Case 2: Stop <= Start (e.g. 23:00 to 06:00)
+            else:
+                in_window = current_minutes >= start_minutes or current_minutes < stop_minutes
+                just_ended = current_minutes == stop_minutes
+                
+            return in_window, just_ended
+
+        except Exception as e:
+            logger.error(f"Schedule parsing error: {e}")
+            return True, False
+
     def _scheduler_loop(self):
-        """Background loop to start queued items and update DB."""
+        """Background loop to start queued items, enforce schedule, and update DB."""
+        shutdown_triggered = False
+        
         while True:
             time.sleep(2)
+            self._update_speed_limit()
+            
+            # Check schedule
+            in_window, just_ended = self._check_schedule()
+            
+            if not in_window:
+                # Outside of schedule window: Pause any active downloads
+                with self._lock:
+                    for task in self._tasks.values():
+                        if task.status == DownloadStatus.DOWNLOADING:
+                            self.pause(task.id)
+                
+                # Check for auto-shutdown exactly on the minute the schedule ends if things are idle
+                if just_ended and not shutdown_triggered:
+                    if self.db.get_setting("shutdown_when_done", "false") == "true":
+                        import os
+                        os.system("shutdown /s /t 60")
+                        shutdown_triggered = True
+                continue
+            
+            # We are inside the schedule window (or schedule is disabled)
+            shutdown_triggered = False
             self._try_start_next()
+            
             # Persist progress for active downloads
             for task in list(self._tasks.values()):
                 if task.status == DownloadStatus.DOWNLOADING:

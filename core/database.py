@@ -203,3 +203,7 @@ class Database:
             (name, json.dumps(extensions), save_path)
         )
         self.conn.commit()
+
+    def clear_categories(self):
+        self.conn.execute("DELETE FROM categories")
+        self.conn.commit()

@@ -169,6 +169,12 @@ class SettingsDialog(QDialog):
         add_cat_btn.setObjectName("btn_secondary")
         add_cat_btn.clicked.connect(self._add_category_row)
         btn_row.addWidget(add_cat_btn)
+        
+        del_cat_btn = QPushButton("- Remove Selected")
+        del_cat_btn.setObjectName("btn_secondary")
+        del_cat_btn.clicked.connect(self._remove_category_row)
+        btn_row.addWidget(del_cat_btn)
+        
         btn_row.addStretch()
         layout.addLayout(btn_row)
 
@@ -218,6 +224,8 @@ class SettingsDialog(QDialog):
         self.tray_check.setChecked(s.get('tray_icon', 'true') == 'true')
         self.minimize_tray_check.setChecked(s.get('minimize_to_tray', 'true') == 'true')
         self.ext_port_spin.setValue(int(s.get('extension_server_port', 9614)))
+        self.global_speed_check.setChecked(s.get('speed_limit_enabled', 'false') == 'true')
+        self.global_speed_spin.setValue(int(s.get('global_speed_limit', 10240)))
 
         # Load categories
         for cat in self._categories:
@@ -235,6 +243,11 @@ class SettingsDialog(QDialog):
             self.cat_table.setItem(row, 1, QTableWidgetItem(""))
             self.cat_table.setItem(row, 2, QTableWidgetItem(r"D:\idm\downloads\Other"))
 
+    def _remove_category_row(self):
+        rows = set(idx.row() for idx in self.cat_table.selectedIndexes())
+        for row in sorted(rows, reverse=True):
+            self.cat_table.removeRow(row)
+
     def _browse_folder(self, line_edit: QLineEdit):
         folder = QFileDialog.getExistingDirectory(self, "Select Folder", line_edit.text())
         if folder:
@@ -250,12 +263,15 @@ class SettingsDialog(QDialog):
             'tray_icon': 'true' if self.tray_check.isChecked() else 'false',
             'minimize_to_tray': 'true' if self.minimize_tray_check.isChecked() else 'false',
             'extension_server_port': str(self.ext_port_spin.value()),
+            'speed_limit_enabled': 'true' if self.global_speed_check.isChecked() else 'false',
+            'global_speed_limit': str(self.global_speed_spin.value()),
         }
         if self.db:
             for k, v in s.items():
                 self.db.set_setting(k, v)
 
             # Save categories
+            self.db.clear_categories()
             for row in range(self.cat_table.rowCount()):
                 name = (self.cat_table.item(row, 0) or QTableWidgetItem()).text().strip()
                 exts_raw = (self.cat_table.item(row, 1) or QTableWidgetItem()).text().strip()
