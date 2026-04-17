@@ -75,7 +75,8 @@ async function sendToWITTGrp(url, filename, referer, extraHeaders = {}) {
             body: JSON.stringify({ url, filename, referer, headers: extraHeaders }),
         });
         if (resp.ok) {
-            showNotification('Download sent to WITTGrp', filename || url.substring(0, 60));
+            // Disabled success notification so the desktop app can show its own sleek UI
+            // showNotification('Download sent to WITTGrp', filename || url.substring(0, 60));
             return true;
         }
     } catch (e) {
@@ -116,42 +117,58 @@ chrome.tabs.onRemoved.addListener(tabId => {
 //   3. Cancel/erase the browser download immediately
 //   4. Send the URL to WITTGrp Desktop App which shows the download dialog
 
-chrome.downloads.onCreated.addListener(async (downloadItem) => {
-    const url = downloadItem.url || downloadItem.finalUrl || '';
-    if (!url || url.startsWith('blob:') || url.startsWith('data:')) return;
+chrome.downloads.onDeterminingFilename.addListener((downloadItem, suggest) => {
+    (async () => {
+        const url = downloadItem.url || downloadItem.finalUrl || '';
+        if (!url || url.startsWith('blob:') || url.startsWith('data:')) {
+            suggest();
+            return;
+        }
 
-    // Check if interception is enabled
-    const enabled = await isInterceptEnabled();
-    if (!enabled) return;
+        // Check if interception is enabled
+        const enabled = await isInterceptEnabled();
+        if (!enabled) {
+            suggest();
+            return;
+        }
 
-    // Check if this file type should be intercepted
-    const mimeMatch = downloadItem.mime &&
-        VIDEO_MIME_TYPES.some(m => downloadItem.mime.startsWith(m));
-    const extMatch = isInterceptableURL(url);
+        // Check if this file type should be intercepted
+        const mimeMatch = downloadItem.mime &&
+            VIDEO_MIME_TYPES.some(m => downloadItem.mime.startsWith(m));
+        const extMatch = isInterceptableURL(url);
 
-    if (!mimeMatch && !extMatch) return;
+        if (!mimeMatch && !extMatch) {
+            suggest();
+            return;
+        }
 
-    console.log(`[WITTGrp] Intercepting download: ${url} (mime: ${downloadItem.mime})`);
+        console.log(`[WITTGrp] Intercepting download: ${url} (mime: ${downloadItem.mime})`);
 
-    // Cancel and erase the browser's download (prevents "failed" entry in downloads list)
-    try {
-        await chrome.downloads.cancel(downloadItem.id);
-        chrome.downloads.erase({ id: downloadItem.id });
-    } catch (e) {
-        console.warn('[WITTGrp] Cancel failed (may have already finished):', e.message);
-    }
+        // Cancel and erase the browser's download to prevent Save As popup
+        try {
+            await chrome.downloads.cancel(downloadItem.id);
+            chrome.downloads.erase({ id: downloadItem.id });
+        } catch (e) {
+            console.warn('[WITTGrp] Cancel failed (may have already finished):', e.message);
+        }
 
-    // Get the page referer: prefer from download item, then tab tracker
-    const referer = downloadItem.referrer ||
-        downloadItem.initiator ||
-        tabReferers.get(downloadItem.tabId) || '';
+        // Must call suggest to resolve the determining phase
+        suggest();
 
-    // Extract filename
-    const filename = filenameFromURL(url) || downloadItem.filename || '';
+        // Get the page referer: prefer from download item, then tab tracker
+        const referer = downloadItem.referrer ||
+            downloadItem.initiator ||
+            tabReferers.get(downloadItem.tabId) || '';
 
-    // Send to WITTGrp — shows dialog in the desktop app
-    await sendToWITTGrp(url, filename, referer);
+        // Extract filename
+        const filename = filenameFromURL(url) || downloadItem.filename || '';
+
+        // Send to WITTGrp — shows dialog in the desktop app
+        await sendToWITTGrp(url, filename, referer);
+    })();
+    return true; // Required since we call suggest() asynchronously
 });
+
 
 // ── Web Request Interceptor (captures video URLs for popup badge) ─────────
 
@@ -236,17 +253,35 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         return true;
     }
 
-    if (msg.action === 'get_videos' && sender.tab) {
-        const videos = capturedVideos.get(sender.tab.id) || [];
+    if (msg.action === 'get_videos') {
+        const tabId = msg.tabId || (sender.tab ? sender.tab.id : null);
+        const videos = tabId ? (capturedVideos.get(tabId) || []) : [];
         sendResponse({ videos });
         return true;
     }
 
-    if (msg.action === 'videos_found') {
+    if (msg.action === 'videos_found' && sender.tab) {
         const videos = msg.videos || [];
-        for (const v of videos) {
-            sendToWITTGrp(v.url, v.filename, sender.tab?.url || '');
+
+        if (!capturedVideos.has(sender.tab.id)) {
+            capturedVideos.set(sender.tab.id, []);
         }
+        const list = capturedVideos.get(sender.tab.id);
+
+        for (const v of videos) {
+            if (!list.find(existing => existing.url === v.url)) {
+                list.push({
+                    url: v.url,
+                    filename: v.filename || 'video.mp4',
+                    size: 0,
+                    mimeType: v.type || 'video',
+                    referer: sender.tab.url || ''
+                });
+            }
+        }
+
+        chrome.action.setBadgeText({ text: String(list.length), tabId: sender.tab.id });
+        chrome.action.setBadgeBackgroundColor({ color: '#e94560', tabId: sender.tab.id });
     }
 
     // Settings read/write from popup

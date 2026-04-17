@@ -143,21 +143,41 @@
         top: 50%;
         right: 8px;
         transform: translateY(-50%);
-        z-index: 9999;
-        background: #e94560;
+        z-index: 2147483647;
+        background: rgba(10, 132, 255, 0.85);
+        backdrop-filter: blur(4px);
         color: white;
-        border: none;
-        border-radius: 6px;
-        padding: 6px 14px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        padding: 8px 16px;
         font-size: 13px;
-        font-weight: 700;
+        font-weight: 600;
         cursor: pointer;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
         font-family: 'Segoe UI', Arial, sans-serif;
-        transition: background 0.2s;
+        transition: all 0.2s ease-in-out;
+        opacity: 0.8;
       `;
-            btn.onmouseover = () => btn.style.background = '#c73652';
-            btn.onmouseout = () => btn.style.background = '#e94560';
+            btn.onmouseover = () => {
+                btn.style.background = 'rgba(71, 161, 255, 0.95)';
+                btn.style.opacity = '1';
+                btn.style.transform = 'translateY(-50%) scale(1.05)';
+            };
+            btn.onmouseout = () => {
+                btn.style.background = 'rgba(10, 132, 255, 0.85)';
+                btn.style.opacity = '0.8';
+                btn.style.transform = 'translateY(-50%) scale(1)';
+            };
+
+            // Prevent video players from pausing by catching all mouse/pointer events
+            const stopAll = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            };
+            btn.addEventListener('mousedown', stopAll);
+            btn.addEventListener('mouseup', stopAll);
+            btn.addEventListener('pointerdown', stopAll);
+            btn.addEventListener('pointerup', stopAll);
 
             btn.onclick = (e) => {
                 e.preventDefault();
@@ -175,10 +195,11 @@
                     console.log('[WITTGrp Extension] ⬇ Download button clicked!', payload);
                     chrome.runtime.sendMessage(payload);
                     btn.textContent = '✓ Sent to WITTGrp';
-                    btn.style.background = '#22c55e';
+                    btn.style.background = 'rgba(34, 197, 94, 0.9)'; // Green success
                     setTimeout(() => {
                         btn.textContent = '⬇ Download';
-                        btn.style.background = '#0A84FF';
+                        btn.style.background = 'rgba(10, 132, 255, 0.85)';
+
                     }, 3000);
                 }
             };
@@ -193,38 +214,66 @@
         });
     }
 
-    // ── Link Interceptor - Add IDM button on file links ───────────────────
+    // ── Global Link Interceptor ───────────────────────────────────────────
+    // Intercepts all clicks on links matching file patterns to prevent 
+    // the browser download system (and its popups) from ever starting.
 
-    function addDownloadLinksHandler() {
+    function setupGlobalInterceptor() {
         const FILE_PATTERNS = /\.(mp4|mkv|avi|mov|wmv|flv|webm|mp3|flac|zip|rar|7z|exe|msi|pdf|doc|docx|iso|apk)([\?#]|$)/i;
 
-        document.querySelectorAll('a[href]').forEach(link => {
-            if (link.getAttribute(WITTGRP_ATTR)) return;
-            if (!FILE_PATTERNS.test(link.href)) return;
-            link.setAttribute(WITTGRP_ATTR, '1');
+        document.addEventListener('click', (e) => {
+            // Find the closest anchor tag
+            const link = e.target.closest('a');
+            if (!link || !link.href) return;
 
-            const badge = document.createElement('span');
-            badge.textContent = ' ⬇';
-            badge.title = 'Click to download with IDM';
-            badge.style.cssText = `
-        color: #e94560;
-        font-size: 12px;
-        cursor: pointer;
-        font-weight: 700;
-        margin-left: 4px;
-      `;
-            badge.onclick = (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                chrome.runtime.sendMessage({
-                    action: 'send_to_wittgrp',
-                    url: link.href,
-                    filename: filenameFromURL(link.href),
-                    referer: location.href,
-                });
-            };
-            link.parentNode?.insertBefore(badge, link.nextSibling);
-        });
+            // Only intercept if it matches a file extension we handle
+            if (!FILE_PATTERNS.test(link.href)) return;
+
+            // If it's a blobs/data URL, let browser handle it (usually small/generated)
+            if (link.href.startsWith('blob:') || link.href.startsWith('data:')) return;
+
+            console.log('[WITTGrp] Intercepted link click:', link.href);
+
+            // STOP THE BROWSER from starting the download
+            e.preventDefault();
+            e.stopPropagation();
+
+            // Send to WITTGrp
+            chrome.runtime.sendMessage({
+                action: 'send_to_wittgrp',
+                url: link.href,
+                filename: filenameFromURL(link.href),
+                referer: location.href,
+            });
+
+            // Optional: visual feedback near the link
+            showClickFeedback(e.clientX, e.clientY);
+        }, true); // Use capture phase to intercept before site's own listeners
+    }
+
+    function showClickFeedback(x, y) {
+        const div = document.createElement('div');
+        div.textContent = '⬇ Sent to WITTGrp';
+        div.style.cssText = `
+            position: fixed;
+            left: ${x + 10}px;
+            top: ${y - 10}px;
+            background: #22c55e;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+            z-index: 1000000;
+            pointer-events: none;
+            transition: opacity 1s, transform 1s;
+        `;
+        document.body.appendChild(div);
+        setTimeout(() => {
+            div.style.opacity = '0';
+            div.style.transform = 'translateY(-20px)';
+            setTimeout(() => div.remove(), 1000);
+        }, 1000);
     }
 
     // ── Message Listener from Background ──────────────────────────────────
@@ -240,12 +289,11 @@
 
     function init() {
         injectDownloadButtons();
-        addDownloadLinksHandler();
+        setupGlobalInterceptor();
 
-        // Observe dynamic content
+        // Observe dynamic content for <video> injection
         const observer = new MutationObserver(() => {
             injectDownloadButtons();
-            addDownloadLinksHandler();
         });
         observer.observe(document.body || document.documentElement, {
             childList: true,

@@ -15,16 +15,16 @@
     body {
       width: 360px;
       min-height: 200px;
-      background: #1a1a2e;
-      color: #e0e0e0;
+      background: #1e1e2e;
+      color: #e2e2e3;
       font-family: 'Segoe UI', Arial, sans-serif;
       font-size: 13px;
     }
 
     .header {
-      background: linear-gradient(135deg, #0f3460, #16213e);
+      background: linear-gradient(135deg, #282a36, #1e1e2e);
       padding: 14px 16px;
-      border-bottom: 2px solid #e94560;
+      border-bottom: 2px solid #0A84FF;
       display: flex;
       align-items: center;
       gap: 10px;
@@ -32,64 +32,65 @@
 
     .logo {
       font-size: 22px;
+      color: #0A84FF;
     }
 
     .header h1 {
       font-size: 16px;
-      color: #e94560;
+      color: #0A84FF;
       font-weight: 700;
     }
 
     .header p {
       font-size: 11px;
-      color: #6080a0;
+      color: #8892b0;
       margin-top: 2px;
     }
 
     .add-url-section {
       padding: 12px;
-      border-bottom: 1px solid #0f3460;
+      border-bottom: 1px solid #3b4252;
     }
 
     .add-url-section input {
       width: 100%;
-      background: #0f1b35;
-      border: 1.5px solid #0f3460;
+      background: #282a36;
+      border: 1px solid #3b4252;
       border-radius: 6px;
-      color: #e0e0e0;
+      color: #e2e2e3;
       padding: 8px 10px;
-      font-size: 12px;
+      font-size: 13px;
       margin-bottom: 8px;
       outline: none;
     }
 
     .add-url-section input:focus {
-      border-color: #e94560;
+      border-color: #0A84FF;
     }
 
     .add-url-section input::placeholder {
-      color: #404060;
+      color: #6272a4;
     }
 
     .btn-add {
       width: 100%;
-      background: linear-gradient(135deg, #e94560, #c73652);
+      background: #0A84FF;
       color: white;
       border: none;
       border-radius: 6px;
       padding: 9px;
       font-size: 13px;
-      font-weight: 700;
+      font-weight: 600;
       cursor: pointer;
-      transition: opacity 0.2s;
+      transition: background 0.2s;
     }
 
     .btn-add:hover {
-      opacity: 0.9;
+      background: #47A1FF;
     }
 
     .btn-add:active {
-      opacity: 0.8;
+      background: #0066CC;
     }
 
     .videos-section {
@@ -98,7 +99,7 @@
 
     .section-title {
       font-size: 11px;
-      color: #6080a0;
+      color: #8892b0;
       text-transform: uppercase;
       letter-spacing: 0.5px;
       margin-bottom: 8px;
@@ -108,7 +109,7 @@
     }
 
     .badge {
-      background: #e94560;
+      background: #0A84FF;
       color: white;
       border-radius: 10px;
       padding: 1px 7px;
@@ -122,8 +123,8 @@
     }
 
     .video-item {
-      background: #16213e;
-      border: 1px solid #0f3460;
+      background: #282a36;
+      border: 1px solid #3b4252;
       border-radius: 6px;
       padding: 8px 10px;
       margin-bottom: 6px;
@@ -132,13 +133,13 @@
     }
 
     .video-item:hover {
-      border-color: #e94560;
-      background: #1c2a50;
+      border-color: #0A84FF;
+      background: #2d303e;
     }
 
     .video-name {
       font-size: 12px;
-      color: #e0e0e0;
+      color: #e2e2e3;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -147,17 +148,17 @@
 
     .video-meta {
       font-size: 10px;
-      color: #6080a0;
+      color: #8892b0;
       display: flex;
       gap: 10px;
     }
 
     .video-type {
-      color: #e94560;
+      color: #0A84FF;
     }
 
     .btn-dl {
-      background: #e94560;
+      background: #0A84FF;
       color: white;
       border: none;
       border-radius: 4px;
@@ -170,13 +171,13 @@
     }
 
     .btn-dl:hover {
-      background: #c73652;
+      background: #47A1FF;
     }
 
     .empty-state {
       text-align: center;
       padding: 20px;
-      color: #404060;
+      color: #6272a4;
       font-size: 12px;
       line-height: 1.6;
     }
@@ -189,7 +190,7 @@
 
     .footer {
       padding: 10px 12px;
-      border-top: 1px solid #0f3460;
+      border-top: 1px solid #3b4252;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -224,12 +225,12 @@
 
     .footer-status {
       font-size: 11px;
-      color: #6080a0;
+      color: #8892b0;
     }
 
     .open-idm {
       font-size: 11px;
-      color: #e94560;
+      color: #0A84FF;
       cursor: pointer;
       text-decoration: none;
       background: none;
@@ -238,7 +239,7 @@
     }
 
     .open-idm:hover {
-      color: #ff6b9d;
+      color: #47A1FF;
     }
 
     ::-webkit-scrollbar {
@@ -246,11 +247,11 @@
     }
 
     ::-webkit-scrollbar-track {
-      background: #16213e;
+      background: #1e1e2e;
     }
 
     ::-webkit-scrollbar-thumb {
-      background: #e94560;
+      background: #3b4252;
       border-radius: 3px;
     }
 
@@ -334,10 +335,10 @@
     <button class="btn-add" id="add-btn">⬇ Send to WITTGrp</button>
   </div>
 
-  <div class="videos-section">
+  <!-- <div class="videos-section">
     <div class="section-title">
       <span>Detected Media <span class="badge" id="video-count">0</span></span>
-      <span id="dl-all-btn" style="color:#e94560;cursor:pointer;font-size:11px;" onclick="downloadAll()">Download
+      <span id="dl-all-btn" style="color:#e94560;cursor:pointer;font-size:11px;">Download
         All</span>
     </div>
     <div class="video-list" id="video-list">
@@ -346,7 +347,7 @@
         <div>No media detected on this page.<br>Browse a video page and media will appear here.</div>
       </div>
     </div>
-  </div>
+  </div> -->
 
   <!-- Intercept toggle -->
   <div class="intercept-row">
@@ -363,140 +364,10 @@
   <div class="footer">
     <span class="footer-status"><span class="status-dot" id="status-dot"></span><span id="status-text">Checking
         WITTGrp…</span></span>
-    <button class="open-idm" onclick="openIDM()">Open WITTGrp App →</button>
+    <button class="open-idm">Open WITTGrp App →</button>
   </div>
 
-  <script>
-    const WITTGRP_URL = 'http://127.0.0.1:9614';
-    let detectedVideos = [];
-
-    function formatSize(bytes) {
-      if (!bytes) return '';
-      const units = ['B', 'KB', 'MB', 'GB'];
-      let i = 0;
-      while (bytes >= 1024 && i < units.length - 1) { bytes /= 1024; i++; }
-      return bytes.toFixed(1) + ' ' + units[i];
-    }
-
-    // Check IDM connection
-    async function checkIDM() {
-      const dot = document.getElementById('status-dot');
-      const text = document.getElementById('status-text');
-      try {
-        const resp = await fetch(WITTGRP_URL + '/ping', {
-          method: 'POST', body: '{}',
-          headers: { 'Content-Type': 'application/json' }
-        });
-        if (resp.ok) {
-          dot.className = 'status-dot';
-          text.textContent = 'WITTGrp Connected';
-        } else throw new Error();
-      } catch {
-        dot.className = 'status-dot offline';
-        text.textContent = 'WITTGrp Not Running';
-      }
-    }
-
-    // Load videos detected by background script
-    function loadVideos() {
-      chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
-        if (!tabs[0]) return;
-        chrome.runtime.sendMessage({ action: 'get_videos', tabId: tabs[0].id }, resp => {
-          detectedVideos = resp?.videos || [];
-          renderVideos();
-        });
-      });
-    }
-
-    function renderVideos() {
-      const container = document.getElementById('video-list');
-      document.getElementById('video-count').textContent = detectedVideos.length;
-      if (!detectedVideos.length) {
-        container.innerHTML = `<div class="empty-state">
-      <span class="empty-icon">🎬</span>
-      <div>No media detected on this page.<br>Browse a video page and media will appear here.</div>
-    </div>`;
-        return;
-      }
-      container.innerHTML = detectedVideos.map((v, i) => `
-    <div class="video-item" id="vi-${i}">
-      <button class="btn-dl" onclick="downloadVideo(${i})">⬇ WITTGrp</button>
-      <div class="video-name">${v.filename || 'video'}</div>
-      <div class="video-meta">
-        <span class="video-type">${v.mimeType || v.type || 'video'}</span>
-        ${v.size ? '<span>' + formatSize(v.size) + '</span>' : ''}
-      </div>
-    </div>
-  `).join('');
-    }
-
-    function downloadVideo(index) {
-      const v = detectedVideos[index];
-      if (!v) return;
-      chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
-        chrome.runtime.sendMessage({
-          action: 'send_to_wittgrp', url: v.url,
-          filename: v.filename, referer: tabs[0]?.url || '',
-        }, () => {
-          const item = document.getElementById(`vi-${index}`);
-          if (item) { item.style.borderColor = '#22c55e'; item.style.background = '#0d2018'; }
-        });
-      });
-    }
-
-    function downloadAll() {
-      detectedVideos.forEach((_, i) => downloadVideo(i));
-    }
-
-    document.getElementById('add-btn').onclick = () => {
-      const url = document.getElementById('url-input').value.trim();
-      if (!url) return;
-      chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
-        chrome.runtime.sendMessage({
-          action: 'send_to_wittgrp', url, filename: '',
-          referer: tabs[0]?.url || '',
-        }, () => {
-          document.getElementById('url-input').value = '';
-          document.getElementById('add-btn').textContent = '✓ Sent!';
-          setTimeout(() => document.getElementById('add-btn').textContent = '⬇  Send to WITTGrp', 2000);
-        });
-      });
-    };
-
-    function openIDM() {
-      // Can't open native apps from extension, notify user
-      alert('Please open IDM from your desktop or taskbar.');
-    }
-
-    // Auto-paste from clipboard on open
-    navigator.clipboard.readText().then(text => {
-      if (text && (text.startsWith('http://') || text.startsWith('https://'))) {
-        document.getElementById('url-input').value = text;
-      }
-    }).catch(() => { });
-
-    // ── Intercept toggle ──────────────────────────────────────────────
-    const interceptToggle = document.getElementById('intercept-toggle');
-
-    // Load saved state
-    chrome.runtime.sendMessage({ action: 'get_settings' }, result => {
-      if (result && typeof result.interceptEnabled !== 'undefined') {
-        interceptToggle.checked = result.interceptEnabled;
-      }
-    });
-
-    // Save on change
-    interceptToggle.addEventListener('change', () => {
-      chrome.runtime.sendMessage({
-        action: 'set_settings',
-        settings: { interceptEnabled: interceptToggle.checked }
-      });
-    });
-
-    checkIDM();
-    loadVideos();
-    setInterval(loadVideos, 3000);
-  </script>
+  <script src="popup.js"></script>
 </body>
 
 </html>

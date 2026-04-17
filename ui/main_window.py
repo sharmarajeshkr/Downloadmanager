@@ -10,9 +10,10 @@ from PyQt6.QtWidgets import (
     QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView,
     QStatusBar, QLabel, QMenu, QSystemTrayIcon, QMessageBox,
     QApplication, QProgressBar, QSplitter, QTreeWidget, QTreeWidgetItem,
-    QFrame, QSizePolicy, QDialog, QCheckBox, QPushButton
+    QFrame, QSizePolicy, QDialog, QCheckBox, QPushButton, QGraphicsDropShadowEffect
+
 )
-from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QThread, QSize, QUrl
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QThread, QSize, QUrl, QPropertyAnimation, QEasingCurve
 from PyQt6.QtGui import (
     QIcon, QAction, QFont, QColor, QBrush, QPixmap, QPainter,
     QClipboard, QDesktopServices
@@ -22,6 +23,12 @@ from core.downloader import DownloadStatus
 from core.file_manager import format_size, format_speed, format_eta
 from ui.add_download_dialog import AddDownloadDialog
 from ui.settings_dialog import SettingsDialog
+from ui.scheduler_dialog import SchedulerDialog
+from ui.site_grabber_dialog import SiteGrabberDialog
+from ui.notification_widget import NotificationManager
+from ui.titlebar import CustomTitleBar
+
+SVG_DIR = os.path.join(os.path.dirname(__file__), "assets", "svg")
 
 
 # Column indices
@@ -63,42 +70,75 @@ class MainWindow(QMainWindow):
         self._clipboard_last = ''
 
         self.setWindowTitle("WITTGrp Download Manager")
-        self.setMinimumSize(1100, 650)
-        self.resize(1280, 750)
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Window)
+        self.setMinimumSize(900, 500)
+        self.resize(1100, 650)
 
         self._setup_ui()
         self._setup_tray()
         self._setup_signals()
         self._start_clipboard_monitor()
         self._load_existing_tasks()
+        self._center_window()
+
+    def _center_window(self):
+        screen = QApplication.primaryScreen().availableGeometry()
+        size = self.geometry()
+        self.move((screen.width() - size.width()) // 2,
+                  (screen.height() - size.height()) // 2)
+
+    def _toggle_sidebar(self):
+        is_collapsed = self.sidebar.maximumWidth() == 0
+        target_width = 180 if is_collapsed else 0
+
+        self.sidebar_anim = QPropertyAnimation(self.sidebar, b"maximumWidth")
+        self.sidebar_anim.setDuration(300)
+        self.sidebar_anim.setStartValue(self.sidebar.width() if not is_collapsed else 0)
+        self.sidebar_anim.setEndValue(target_width)
+        self.sidebar_anim.setEasingCurve(QEasingCurve.Type.InOutCubic)
+        self.sidebar_anim.start()
 
     # ── UI Setup ─────────────────────────────────────────────────────────
 
     def _setup_ui(self):
-        # Central widget
         central = QWidget()
         self.setCentralWidget(central)
         main_layout = QVBoxLayout(central)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
 
+        # Title bar
+        self.title_bar = CustomTitleBar(self)
+        title_shadow = QGraphicsDropShadowEffect(self)
+        title_shadow.setBlurRadius(15)
+        title_shadow.setColor(QColor(0, 0, 0, 160))
+        title_shadow.setOffset(0, 2)
+        self.title_bar.setGraphicsEffect(title_shadow)
+        main_layout.addWidget(self.title_bar)
+
         self._setup_menubar()
-        self._setup_toolbar()
+        
+        # We need to explicitly place the menubar inside our VBox to play nice with frameless
+        main_layout.addWidget(self.menuBar())
+
+        self.toolbar = self._setup_toolbar()
+        main_layout.addWidget(self.toolbar)
 
         # Splitter: sidebar + download list
         splitter = QSplitter(Qt.Orientation.Horizontal)
+        splitter.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         splitter.setHandleWidth(1)
 
         # Sidebar
-        sidebar = self._build_sidebar()
-        splitter.addWidget(sidebar)
+        self.sidebar = self._build_sidebar()
+        splitter.addWidget(self.sidebar)
 
         # Download table
         self.table = self._build_table()
         splitter.addWidget(self.table)
-        splitter.setSizes([180, 900])
+        splitter.setSizes([165, 935])
 
-        main_layout.addWidget(splitter)
+        main_layout.addWidget(splitter, 1)
 
         # Status bar
         self._setup_statusbar()
@@ -139,42 +179,62 @@ class MainWindow(QMainWindow):
         a8.triggered.connect(self._show_settings)
         a8.setShortcut("Ctrl+,")
         tools_menu.addSeparator()
+        a_schedule = tools_menu.addAction("Scheduler…")
+        a_schedule.triggered.connect(self._show_scheduler)
+        tools_menu.addSeparator()
+        a_sitegrab = tools_menu.addAction("Site Grabber…")
+        a_sitegrab.triggered.connect(self._show_site_grabber)
+        tools_menu.addSeparator()
         a9 = tools_menu.addAction("Browser Extension Guide…")
         a9.triggered.connect(self._show_extension_guide)
 
         mb.addMenu("Help")
 
-    def _setup_toolbar(self):
+    def _setup_toolbar(self) -> QToolBar:
         tb = QToolBar("Main Toolbar")
         tb.setMovable(False)
         tb.setIconSize(QSize(20, 20))
         tb.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
-        self.addToolBar(tb)
 
-        add_action = QAction("➕  Add URL", self)
+        menu_action = QAction(QIcon(os.path.join(SVG_DIR, 'menu.svg')), "Menu", self)
+        menu_action.setToolTip("Toggle Sidebar")
+        menu_action.triggered.connect(self._toggle_sidebar)
+        tb.addAction(menu_action)
+        
+        tb.addSeparator()
+
+        add_action = QAction(QIcon(os.path.join(SVG_DIR, 'add.svg')), "Add URL", self)
         add_action.setToolTip("Add new download (Ctrl+N)")
         add_action.triggered.connect(self._show_add_dialog)
         tb.addAction(add_action)
 
         tb.addSeparator()
 
-        start_action = QAction("▶  Start All", self)
+        start_action = QAction(QIcon(os.path.join(SVG_DIR, 'play.svg')), "Start All", self)
         start_action.triggered.connect(self.queue_manager.start_all)
         tb.addAction(start_action)
 
-        stop_action = QAction("⏹  Stop All", self)
+        stop_action = QAction(QIcon(os.path.join(SVG_DIR, 'stop.svg')), "Stop All", self)
         stop_action.triggered.connect(self.queue_manager.stop_all)
         tb.addAction(stop_action)
 
         tb.addSeparator()
 
-        settings_action = QAction("⚙  Settings", self)
+        scheduler_action = QAction(QIcon(os.path.join(SVG_DIR, 'menu.svg')), "Scheduler", self)
+        scheduler_action.triggered.connect(self._show_scheduler)
+        tb.addAction(scheduler_action)
+
+        grab_action = QAction(QIcon(os.path.join(SVG_DIR, 'menu.svg')), "Site Grabber", self)
+        grab_action.triggered.connect(self._show_site_grabber)
+        tb.addAction(grab_action)
+
+        settings_action = QAction(QIcon(os.path.join(SVG_DIR, 'settings.svg')), "Settings", self)
         settings_action.triggered.connect(self._show_settings)
         tb.addAction(settings_action)
 
         tb.addSeparator()
 
-        open_folder_action = QAction("📂  Open Folder", self)
+        open_folder_action = QAction(QIcon(os.path.join(SVG_DIR, 'folder.svg')), "Open Folder", self)
         open_folder_action.triggered.connect(self._open_downloads_folder)
         tb.addAction(open_folder_action)
 
@@ -202,27 +262,32 @@ class MainWindow(QMainWindow):
         self.speed_label.setStyleSheet("color: #4ade80; font-weight: 600; padding-right: 12px;")
         tb.addWidget(self.speed_label)
 
+        return tb
+
     def _build_sidebar(self) -> QWidget:
         sidebar = QWidget()
-        sidebar.setFixedWidth(180)
-        sidebar.setStyleSheet("background: #16213e; border-right: 1px solid #0f3460;")
+        sidebar.setMinimumWidth(160)
+        sidebar.setMaximumWidth(200)
+        sidebar.setStyleSheet("background: #1e1e2e; border-right: 1px solid #3b4252;")
         layout = QVBoxLayout(sidebar)
-        layout.setContentsMargins(8, 16, 8, 8)
-        layout.setSpacing(4)
+        layout.setContentsMargins(8, 12, 8, 8)
+        layout.setSpacing(2)
 
-        logo = QLabel("⬇ WITTGrp")
-        logo.setFont(QFont("Segoe UI", 18, QFont.Weight.Bold))
-        logo.setStyleSheet("color: #e94560; padding: 8px 4px 16px 4px;")
+        logo = QLabel("⬇  WITTGrp")
+        logo.setFont(QFont("Segoe UI", 13, QFont.Weight.Bold))
+        logo.setStyleSheet("color: #0A84FF; padding: 4px 4px 10px 4px;")
         layout.addWidget(logo)
 
         self.filter_tree = QTreeWidget()
         self.filter_tree.setHeaderHidden(True)
         self.filter_tree.setRootIsDecorated(False)
+        self.filter_tree.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.filter_tree.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.filter_tree.setStyleSheet("""
-            QTreeWidget { background: transparent; border: none; }
-            QTreeWidget::item { padding: 8px 4px; border-radius: 6px; color: #c0c0e0; }
-            QTreeWidget::item:selected { background: rgba(233,69,96,0.25); color: #fff; }
-            QTreeWidget::item:hover { background: rgba(255,255,255,0.05); }
+            QTreeWidget { background: transparent; border: none; outline: none; }
+            QTreeWidget::item { padding: 4px 6px; border-radius: 4px; color: #e2e2e3; }
+            QTreeWidget::item:selected { background: rgba(10, 132, 255, 0.25); color: #fff; }
+            QTreeWidget::item:hover { background: rgba(255, 255, 255, 0.05); }
         """)
         categories = ["All Downloads", "Downloading", "Completed", "Paused",
                       "Videos", "Music", "Documents", "Programs", "Archives", "Other"]
@@ -239,6 +304,12 @@ class MainWindow(QMainWindow):
         ver = QLabel("v1.0.0 | Port 9614")
         ver.setStyleSheet("color: #404060; font-size: 10px; padding: 4px;")
         layout.addWidget(ver)
+
+        sidebar_shadow = QGraphicsDropShadowEffect(sidebar)
+        sidebar_shadow.setBlurRadius(20)
+        sidebar_shadow.setColor(QColor(0, 0, 0, 150))
+        sidebar_shadow.setOffset(3, 0)
+        sidebar.setGraphicsEffect(sidebar_shadow)
 
         return sidebar
 
@@ -257,7 +328,7 @@ class MainWindow(QMainWindow):
         table.doubleClicked.connect(self._on_double_click)
         table.verticalHeader().setVisible(False)
         table.setShowGrid(False)
-        table.setRowHeight(0, 44)
+        table.verticalHeader().setDefaultSectionSize(38)
 
         hh = table.horizontalHeader()
         hh.setSectionResizeMode(COL_NAME, QHeaderView.ResizeMode.Stretch)
@@ -318,6 +389,7 @@ class MainWindow(QMainWindow):
         self.add_url_signal.connect(self._emit_add_dialog)
         # Register callback with queue manager
         self.queue_manager.on_task_update = self._on_task_update
+        self.queue_manager.on_task_completed = self._on_task_completed
 
         # Refresh timer for speed/ETA
         self.refresh_timer = QTimer()
@@ -333,6 +405,19 @@ class MainWindow(QMainWindow):
     def _on_task_update(self, task):
         """Called from any thread — emits signal to update UI in main thread."""
         self.task_update_signal.emit(task)
+
+    def _on_task_completed(self, task):
+        """Called when a task completely finishes downloading and merging."""
+        # Ensure we run in main thread if called directly, but notify() creates widgets 
+        # so it must be main thread. For safety we should really use a signal.
+        def _notify():
+            NotificationManager.get().notify(
+                title="Download Complete",
+                message=task.filename,
+                action="success"
+            )
+        # Using a QTimer.singleShot(0) safely queues onto main thread event loop
+        QTimer.singleShot(0, _notify)
 
     def _add_task_row(self, task):
         row = self.table.rowCount()
@@ -356,6 +441,11 @@ class MainWindow(QMainWindow):
         self._refresh_task_row(row, task)
 
     def _update_task_row(self, task):
+        # Guard: only process DownloadTask objects (cross-thread signal delivery can
+        # occasionally pass unexpected Qt objects on some PyQt6 builds)
+        from core.queue_manager import DownloadTask
+        if not isinstance(task, DownloadTask):
+            return
         if task.id not in self._task_rows:
             self._add_task_row(task)
         else:
@@ -502,15 +592,23 @@ class MainWindow(QMainWindow):
             size=params.get('size', 0),
             skip_probe=params.get('skip_probe', False),
         )
-        self.tray_icon.showMessage(
-            "WITTGrp - Download Started",
-            f"⬇ {params.get('filename', 'File')}",
-            QSystemTrayIcon.MessageIcon.Information, 3000
+        NotificationManager.get().notify(
+            title="Download Added", 
+            message=params.get('filename', 'File has been added to the queue.'),
+            action="info"
         )
 
     def _show_settings(self):
         dlg = SettingsDialog(parent=self, db=self.db)
         dlg.exec()
+
+    def _show_scheduler(self):
+        dlg = SchedulerDialog(parent=self, db=self.db)
+        dlg.exec()
+
+    def _show_site_grabber(self):
+        dlg = SiteGrabberDialog(parent=self, queue_manager=self.queue_manager)
+        dlg.show()
 
     def _show_extension_guide(self):
         ext_path = os.path.abspath("browser_extension/chrome")
@@ -721,7 +819,7 @@ class MainWindow(QMainWindow):
         if self.db.get_setting('minimize_to_tray', 'true') == 'true':
             event.ignore()
             self.hide()
-            self.tray_icon.showMessage("WITTGrp", "Running in background", 2000)
+            self.tray_icon.showMessage("WITTGrp", "Running in background", QSystemTrayIcon.MessageIcon.Information, 2000)
         else:
             self._quit_app()
 

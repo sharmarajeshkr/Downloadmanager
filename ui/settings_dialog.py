@@ -9,7 +9,10 @@ from PyQt6.QtWidgets import (
     QHeaderView, QAbstractItemView, QSlider
 )
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QFont
+from PyQt6.QtGui import QFont, QIcon
+from ui.titlebar import CustomTitleBar
+
+SVG_DIR = os.path.join(os.path.dirname(__file__), "assets", "svg")
 
 
 class SettingsDialog(QDialog):
@@ -19,7 +22,8 @@ class SettingsDialog(QDialog):
         super().__init__(parent)
         self.db = db
         self.setWindowTitle("WITTGrp Settings & Preferences")
-        self.setMinimumSize(700, 550)
+        self.setMinimumSize(680, 540)
+        self.resize(720, 580)
         self.setModal(True)
         self._settings = db.get_all_settings() if db else {}
         self._categories = db.get_categories() if db else []
@@ -27,25 +31,32 @@ class SettingsDialog(QDialog):
         self._load_values()
 
     def _build_ui(self):
+        from PyQt6.QtWidgets import QHBoxLayout
         layout = QVBoxLayout(self)
-        layout.setSpacing(0)
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(10)
+        layout.setContentsMargins(16, 14, 16, 14)
 
         # Header
-        header = QWidget()
-        header.setStyleSheet("background: #0f3460; padding: 16px;")
-        hh = QVBoxLayout(header)
-        title = QLabel("⚙  Settings & Preferences")
-        title.setFont(QFont("Segoe UI", 16, QFont.Weight.Bold))
-        title.setStyleSheet("color: #e94560; background: transparent;")
-        subtitle = QLabel("Configure download preferences, paths, and integrations")
-        subtitle.setStyleSheet("color: #8090b0; background: transparent; font-size: 12px;")
-        hh.addWidget(title)
-        hh.addWidget(subtitle)
-        layout.addWidget(header)
+        hdr = QHBoxLayout()
+        hdr.setSpacing(8)
+        icon_lbl = QLabel("⚙")
+        icon_lbl.setFixedSize(28, 28)
+        icon_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        icon_lbl.setStyleSheet(
+            "background:#0A84FF; color:#fff; border-radius:6px;"
+            "font-size:14px; font-weight:700;"
+        )
+        from PyQt6.QtGui import QFont as _QFont
+        title_lbl = QLabel("Settings & Preferences")
+        title_lbl.setFont(_QFont("Segoe UI", 15, _QFont.Weight.Bold))
+        title_lbl.setStyleSheet("color:#0A84FF;")
+        hdr.addWidget(icon_lbl)
+        hdr.addWidget(title_lbl)
+        hdr.addStretch()
+        layout.addLayout(hdr)
 
         self.tabs = QTabWidget()
-        layout.addWidget(self.tabs)
+        layout.addWidget(self.tabs, 1)
 
         self.tabs.addTab(self._general_tab(), "General")
         self.tabs.addTab(self._connection_tab(), "Connection")
@@ -54,7 +65,6 @@ class SettingsDialog(QDialog):
 
         # Buttons
         btn_row = QHBoxLayout()
-        btn_row.setContentsMargins(16, 12, 16, 16)
         btn_row.addStretch()
         self.cancel_btn = QPushButton("Cancel")
         self.cancel_btn.setObjectName("btn_cancel")
@@ -97,6 +107,9 @@ class SettingsDialog(QDialog):
 
         self.show_add_dialog_check = QCheckBox("Show 'Add New Download' dialog")
         dfl.addRow("", self.show_add_dialog_check)
+
+        self.auto_start_check = QCheckBox("Automatically start download after detecting info")
+        dfl.addRow("", self.auto_start_check)
 
         self.start_on_boot_check = QCheckBox("Start WITTGrp with Windows")
         dfl.addRow("", self.start_on_boot_check)
@@ -159,6 +172,12 @@ class SettingsDialog(QDialog):
         add_cat_btn.setObjectName("btn_secondary")
         add_cat_btn.clicked.connect(self._add_category_row)
         btn_row.addWidget(add_cat_btn)
+        
+        del_cat_btn = QPushButton("- Remove Selected")
+        del_cat_btn.setObjectName("btn_secondary")
+        del_cat_btn.clicked.connect(self._remove_category_row)
+        btn_row.addWidget(del_cat_btn)
+        
         btn_row.addStretch()
         layout.addLayout(btn_row)
 
@@ -203,11 +222,14 @@ class SettingsDialog(QDialog):
         self.default_path_edit.setText(s.get('save_path', r'D:\idm\downloads'))
         self.max_concurrent_spin.setValue(int(s.get('max_concurrent', 3)))
         self.show_add_dialog_check.setChecked(s.get('show_add_dialog', 'true') == 'true')
+        self.auto_start_check.setChecked(s.get('auto_start_download', 'false') == 'true')
         self.default_connections_spin.setValue(int(s.get('default_connections', 8)))
         self.clipboard_check.setChecked(s.get('monitor_clipboard', 'true') == 'true')
         self.tray_check.setChecked(s.get('tray_icon', 'true') == 'true')
         self.minimize_tray_check.setChecked(s.get('minimize_to_tray', 'true') == 'true')
         self.ext_port_spin.setValue(int(s.get('extension_server_port', 9614)))
+        self.global_speed_check.setChecked(s.get('speed_limit_enabled', 'false') == 'true')
+        self.global_speed_spin.setValue(int(s.get('global_speed_limit', 10240)))
 
         # Load categories
         for cat in self._categories:
@@ -225,6 +247,11 @@ class SettingsDialog(QDialog):
             self.cat_table.setItem(row, 1, QTableWidgetItem(""))
             self.cat_table.setItem(row, 2, QTableWidgetItem(r"D:\idm\downloads\Other"))
 
+    def _remove_category_row(self):
+        rows = set(idx.row() for idx in self.cat_table.selectedIndexes())
+        for row in sorted(rows, reverse=True):
+            self.cat_table.removeRow(row)
+
     def _browse_folder(self, line_edit: QLineEdit):
         folder = QFileDialog.getExistingDirectory(self, "Select Folder", line_edit.text())
         if folder:
@@ -235,17 +262,21 @@ class SettingsDialog(QDialog):
             'save_path': self.default_path_edit.text(),
             'max_concurrent': str(self.max_concurrent_spin.value()),
             'show_add_dialog': 'true' if self.show_add_dialog_check.isChecked() else 'false',
+            'auto_start_download': 'true' if self.auto_start_check.isChecked() else 'false',
             'default_connections': str(self.default_connections_spin.value()),
             'monitor_clipboard': 'true' if self.clipboard_check.isChecked() else 'false',
             'tray_icon': 'true' if self.tray_check.isChecked() else 'false',
             'minimize_to_tray': 'true' if self.minimize_tray_check.isChecked() else 'false',
             'extension_server_port': str(self.ext_port_spin.value()),
+            'speed_limit_enabled': 'true' if self.global_speed_check.isChecked() else 'false',
+            'global_speed_limit': str(self.global_speed_spin.value()),
         }
         if self.db:
             for k, v in s.items():
                 self.db.set_setting(k, v)
 
             # Save categories
+            self.db.clear_categories()
             for row in range(self.cat_table.rowCount()):
                 name = (self.cat_table.item(row, 0) or QTableWidgetItem()).text().strip()
                 exts_raw = (self.cat_table.item(row, 1) or QTableWidgetItem()).text().strip()
